@@ -1,4 +1,6 @@
-import { intersection } from "polygon-clipping";
+// polygon-clipping's ESM build exports a default object; named exports are in the CJS build only.
+// Use the default import so both webpack (Next.js) and tsx/vitest CJS paths work.
+import polygonClipping from "polygon-clipping";
 import type { Building, ClusterIndexEntry } from "./types";
 
 // AABB-plus-epsilon is a fast-reject filter only. Two polygons whose bounding boxes
@@ -37,7 +39,7 @@ function aabbsOverlap(a: Aabb, b: Aabb, epsilon: number): boolean {
 
 function polygonsIntersect(a: number[][][], b: number[][][]): boolean {
   // polygon-clipping works on arbitrary 2D coordinates; ENU metres are fine here.
-  const result = intersection(
+  const result = polygonClipping.intersection(
     a as [number, number][][],
     b as [number, number][][]
   );
