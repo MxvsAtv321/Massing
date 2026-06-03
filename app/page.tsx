@@ -9,8 +9,7 @@ export default async function Page() {
     path.join(process.cwd(), "data", "sources.json")
   );
 
-  // Slim the client payload: only geometry and identity.
-  // Provenance, sources, and coverage stay server-side until the honesty layer needs them.
+  // Slim client payload: only geometry and identity. Provenance stays server-side.
   const buildings: BuildingForScene[] = model.buildings.map((b) => ({
     id: b.id,
     footprint: b.footprint,
@@ -18,5 +17,10 @@ export default async function Page() {
     clusterId: b.clusterId,
   }));
 
-  return <Scene buildings={buildings} />;
+  return (
+    <Scene
+      buildings={buildings}
+      originLatLon={model.originLatLon}
+    />
+  );
 }

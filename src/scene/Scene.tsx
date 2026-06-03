@@ -9,83 +9,89 @@ import {
   computeModelBounds,
   type BuildingForScene,
 } from "./buildings";
+import { useSunDriver } from "./useSunDriver";
+import { SolarControls } from "./SolarControls";
+import { MIN_SUN_ALTITUDE_DEG } from "../solar/sun";
 
 // ---------------------------------------------------------------------------
-// Axis mapping (matches buildings.ts):
+// Axis mapping (same as buildings.ts, must stay in sync with sun.ts):
 //   ENU east  -> Three.js +X
 //   ENU north -> Three.js -Z
 //   ENU up    -> Three.js +Y
 //
-// Sun direction convention (Part 3 will replace the hardcoded value below):
-//   A unit vector pointing FROM the sun TOWARD the scene centre, expressed
-//   in Three.js space. The DirectionalLight position is set to
-//   sceneCentre - sunDir * (radius * 2), so the light travels along sunDir.
+// Part 3 sun vector: sunDir points FROM ground TOWARD sun. At solar noon
+// (az=180, sun due south), sunDir.z = +cos(alt) > 0 (south is +Z in Three.js).
+// The shadow falls in the anti-sun direction, i.e. toward -Z = north. Correct.
+//
+// Light placement: center + sunDir * radius*2, so the shadow-casting rays travel
+// from the sun's position back toward the scene center.
 // ---------------------------------------------------------------------------
 
-// Hardcoded sun: southwest sky, moderate elevation (~35 deg above horizon).
-// azimuth ~225 deg (SW), elevation ~35 deg.
-// In ENU: east = sin(225) = -0.707, north = cos(225) = -0.707, up = sin(35) ~ 0.574
-// In Three.js (+X=east, +Y=up, -Z=north):
-//   x = east  = -0.707
-//   y = up     =  0.574
-//   z = -north =  0.707  (south is +Z in Three.js, so north component flips)
-// Normalised and pointing FROM origin TOWARD sun position (i.e. the direction light travels
-// is the negation of this, but we use it as the offset for light.position).
-// Part 3 replaces this with astronomy-engine output.
-const SUN_DIR = new THREE.Vector3(-0.707, 0.574, 0.707).normalize();
+const DEG2RAD = Math.PI / 180;
 
 // ---------------------------------------------------------------------------
-// SceneSetup: accesses the renderer and wires shadow map settings.
-// Lives inside the Canvas so it can call useThree.
+// SceneSetup: configures the directional light and shadow map.
+// Runs useEffect on every sunDir change to update position and needsUpdate.
 // ---------------------------------------------------------------------------
 
-function SceneSetup({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
+type SetupProps = {
+  bounds: ReturnType<typeof computeModelBounds>;
+  sunDir: THREE.Vector3;
+  altitude: number;
+  isUsable: boolean;
+};
+
+function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
   const { gl, scene } = useThree();
   const lightRef = useRef<THREE.DirectionalLight>(null);
 
+  // One-time: disable shadow auto-update. Part 3 drives needsUpdate manually.
+  useEffect(() => {
+    gl.shadowMap.autoUpdate = false;
+  }, [gl]);
+
+  // Re-run on every sun change to move the light and resize the frustum.
   useEffect(() => {
     const light = lightRef.current;
     if (!light) return;
 
     const { center, radius, maxHeight } = bounds;
 
-    // Push the light far enough along SUN_DIR that its shadow camera
-    // can see the entire scene. Position = centre + SUN_DIR * radius*2.
-    // Target = scene centre. Both must be in the scene for the transform to apply.
-    light.position.copy(center).addScaledVector(SUN_DIR, radius * 2);
-    light.target.position.copy(center);
     scene.add(light.target);
-
-    // Orthographic shadow camera frustum in the light's local space.
-    // left/right/top/bottom encompass the horizontal scene extent.
-    // near/far span the full depth of the scene along the light ray.
-    const margin = 1.2;
-    const cam = light.shadow.camera as THREE.OrthographicCamera;
-    cam.left = -radius * margin;
-    cam.right = radius * margin;
-    cam.top = radius * margin;
-    cam.bottom = -radius * margin;
-    // near is small (light is radius*2 away, scene depth is ~radius*3 forward)
-    cam.near = radius * 0.1;
-    cam.far = radius * 4;
-    cam.updateProjectionMatrix();
-
-    light.shadow.mapSize.set(2048, 2048);
-    // Bias values for PCFSoftShadowMap at city scale. Tune if acne or
-    // peter-panning appears; Part 3's low-sun angles will need tighter values.
+    light.shadow.mapSize.set(4096, 4096);
     light.shadow.bias = -0.001;
     light.shadow.normalBias = 0.05;
 
-    // autoUpdate = false: shadow map only recomputes when needsUpdate is set.
-    // Expose a function here (or set via ref from parent) so Part 3 can call it
-    // after each sun-direction change instead of recomputing every frame.
-    gl.shadowMap.autoUpdate = false;
+    if (!isUsable) {
+      light.intensity = 0;
+      // Leave needsUpdate false when sun is below threshold.
+      return () => { scene.remove(light.target); };
+    }
+
+    light.intensity = 2.5;
+    light.position.copy(center).addScaledVector(sunDir, radius * 2);
+    light.target.position.copy(center);
+
+    // Dynamic frustum: size to current altitude so noon is crisp, clamped at
+    // the 8-degree worst case so the camera does not grow unboundedly.
+    const clampedAlt = Math.max(altitude, MIN_SUN_ALTITUDE_DEG);
+    const shadowLength = maxHeight / Math.tan(clampedAlt * DEG2RAD);
+    const halfExtent = radius + shadowLength;
+
+    const cam = light.shadow.camera as THREE.OrthographicCamera;
+    cam.left = -halfExtent;
+    cam.right = halfExtent;
+    cam.top = halfExtent;
+    cam.bottom = -halfExtent;
+    // Light is at radius*2 from centre; scene extends halfExtent past centre.
+    cam.near = radius * 0.1;
+    cam.far = radius * 2 + halfExtent * 2;
+    cam.updateProjectionMatrix();
+
     gl.shadowMap.needsUpdate = true;
 
-    return () => {
-      scene.remove(light.target);
-    };
-  }, [gl, scene, bounds]);
+    return () => { scene.remove(light.target); };
+  }, [gl, scene, bounds, sunDir, altitude, isUsable]);
 
   return (
     <directionalLight
@@ -98,25 +104,19 @@ function SceneSetup({ bounds }: { bounds: ReturnType<typeof computeModelBounds> 
 }
 
 // ---------------------------------------------------------------------------
-// Buildings: renders the merged city geometry.
+// Buildings: merged city geometry, one draw call.
 // ---------------------------------------------------------------------------
 
 function Buildings({ buildings }: { buildings: BuildingForScene[] }) {
   const geoRef = useRef<THREE.BufferGeometry | null>(null);
-
   if (!geoRef.current) {
     geoRef.current = buildMergedGeometry(buildings);
   }
-
   const geo = geoRef.current;
   if (!geo) return null;
 
   return (
-    <mesh
-      geometry={geo}
-      castShadow
-      receiveShadow
-    >
+    <mesh geometry={geo} castShadow receiveShadow>
       <meshStandardMaterial
         color="#c8bfb0"
         roughness={0.85}
@@ -128,15 +128,20 @@ function Buildings({ buildings }: { buildings: BuildingForScene[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Ground: flat plane at y = 0, receives shadows (ADR-002).
+// Ground: large flat plane at y=0, sized to catch low-sun long shadows.
+// At 8 degrees, shadow length = maxHeight / tan(8deg) ~ 7x maxHeight.
 // ---------------------------------------------------------------------------
 
 function Ground({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
-  const size = bounds.radius * 3;
+  const { center, radius, maxHeight } = bounds;
+  // Extend ground to cover worst-case shadow length at MIN_SUN_ALTITUDE_DEG.
+  const groundHalf = radius + maxHeight / Math.tan(MIN_SUN_ALTITUDE_DEG * DEG2RAD);
+  const size = groundHalf * 2;
+
   return (
     <mesh
       rotation={[-Math.PI / 2, 0, 0]}
-      position={[bounds.center.x, 0, bounds.center.z]}
+      position={[center.x, 0, center.z]}
       receiveShadow
     >
       <planeGeometry args={[size, size]} />
@@ -146,7 +151,7 @@ function Ground({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
 }
 
 // ---------------------------------------------------------------------------
-// CameraRig: positions camera and OrbitControls target to frame the model.
+// CameraRig: frames the model on load.
 // ---------------------------------------------------------------------------
 
 function CameraRig({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
@@ -154,7 +159,6 @@ function CameraRig({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }
 
   useEffect(() => {
     const { center, radius } = bounds;
-    // Position camera above and to the south (positive Z in Three.js = south).
     camera.position.set(
       center.x,
       center.y + radius * 0.7,
@@ -175,15 +179,17 @@ function CameraRig({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }
 }
 
 // ---------------------------------------------------------------------------
-// Scene: exported client component. Receives slim building props from server.
+// Scene: client root. Receives slim building data + originLatLon from server.
 // ---------------------------------------------------------------------------
 
 export type SceneProps = {
   buildings: BuildingForScene[];
+  originLatLon: [number, number];
 };
 
-export function Scene({ buildings }: SceneProps) {
+export function Scene({ buildings, originLatLon }: SceneProps) {
   const bounds = computeModelBounds(buildings);
+  const sun = useSunDriver(originLatLon);
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
@@ -198,11 +204,18 @@ export function Scene({ buildings }: SceneProps) {
       >
         <ambientLight intensity={0.4} color="#b0c4d8" />
 
-        <SceneSetup bounds={bounds} />
+        <SceneSetup
+          bounds={bounds}
+          sunDir={sun.sunDir}
+          altitude={sun.altitude}
+          isUsable={sun.isUsable}
+        />
         <Buildings buildings={buildings} />
         <Ground bounds={bounds} />
         <CameraRig bounds={bounds} />
       </Canvas>
+
+      <SolarControls sun={sun} />
     </div>
   );
 }
