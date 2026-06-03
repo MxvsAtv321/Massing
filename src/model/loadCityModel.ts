@@ -296,6 +296,7 @@ export function parseCityModel(
       origin: "toronto-open-data",
       clusterId: "",          // filled in by buildClusters
       isTallestInCluster: false,
+      heightSrc: srcValue,
     });
 
     coverage.included++;

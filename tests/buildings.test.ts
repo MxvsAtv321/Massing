@@ -16,6 +16,7 @@ const SQUARE_BUILDING: BuildingForScene = {
   ],
   heightValue: 20,
   clusterId: "c0",
+  confidenceKind: "measured",
 };
 
 // A building with a hole (courtyard).
@@ -33,6 +34,7 @@ const COURTYARD_BUILDING: BuildingForScene = {
   ],
   heightValue: 15,
   clusterId: "c1",
+  confidenceKind: "measured",
 };
 
 // A building offset from origin to test bounds centring.
@@ -43,6 +45,7 @@ const OFFSET_BUILDING: BuildingForScene = {
   ],
   heightValue: 30,
   clusterId: "c2",
+  confidenceKind: "measured",
 };
 
 describe("buildMergedGeometry", () => {

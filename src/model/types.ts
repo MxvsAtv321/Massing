@@ -18,6 +18,7 @@ export type Building = {
   origin: "toronto-open-data" | "user-edit";
   clusterId: string;
   isTallestInCluster: boolean;
+  heightSrc: string | null;  // raw HEIGHT_SRC field value from the dataset
 };
 
 export type ClusterIndexEntry = {

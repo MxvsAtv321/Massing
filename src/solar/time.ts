@@ -31,3 +31,10 @@ export function formatTorontoTime(utcDate: Date): string {
   const abbr = dt.toFormat("ZZZZ"); // EDT or EST
   return `${time} ${abbr}`;
 }
+
+// Format a UTC Date as a full Toronto date+time string for the export footer.
+// Returns e.g. "2026-06-03 2:32 PM EDT".
+export function formatTorontoDateTime(utcDate: Date): string {
+  const dt = DateTime.fromJSDate(utcDate, { zone: "America/Toronto" });
+  return `${dt.toFormat("yyyy-MM-dd")} ${dt.toFormat("h:mm a")} ${dt.toFormat("ZZZZ")}`;
+}

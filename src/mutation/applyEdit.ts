@@ -81,6 +81,7 @@ export function buildHypotheticalBuilding(
     clusterId: `user-c${addIndex}`,
     footprint: squareFootprint(op.at),
     heightValue: storeyToMetres(op.heightStoreys, metresPerStorey),
+    confidenceKind: "hypothetical",
     origin: "user-edit",
     confidence: { kind: "hypothetical" },
   };

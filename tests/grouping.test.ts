@@ -26,6 +26,7 @@ function makeBuilding(
     origin: "toronto-open-data",
     clusterId: "",
     isTallestInCluster: false,
+    heightSrc: null,
   };
 }
 

@@ -16,12 +16,13 @@ import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 //     old Z (height) -> new Y (up)        +Y  [height extrusion becomes Y]
 // ---------------------------------------------------------------------------
 
-// Slim type: only what the scene needs; provenance and coverage stay server-side.
+// Slim type: only what the scene needs; full provenance stays server-side.
 export type BuildingForScene = {
   id: string;
   footprint: number[][][]; // rings of [east, north] ENU metres
   heightValue: number;
   clusterId: string;
+  confidenceKind: "measured" | "estimated" | "hypothetical";
 };
 
 // Signed area of a 2D ring (shoelace). Positive = CCW, negative = CW.
@@ -102,6 +103,17 @@ export function buildMergedGeometry(
   const merged = mergeGeometries(geos, false);
   for (const g of geos) g.dispose();
   return merged;
+}
+
+// Split buildings by confidence kind for the data-quality tint view.
+export function buildSplitGeometries(buildings: BuildingForScene[]): {
+  measured: THREE.BufferGeometry | null;
+  estimated: THREE.BufferGeometry | null;
+} {
+  return {
+    measured: buildMergedGeometry(buildings.filter((b) => b.confidenceKind === "measured")),
+    estimated: buildMergedGeometry(buildings.filter((b) => b.confidenceKind !== "measured")),
+  };
 }
 
 // ---------------------------------------------------------------------------

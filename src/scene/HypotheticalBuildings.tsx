@@ -2,6 +2,7 @@
 
 import { useMemo, useEffect } from "react";
 import { useThree } from "@react-three/fiber";
+import type { ThreeEvent } from "@react-three/fiber";
 import * as THREE from "three";
 import { buildMergedGeometry, type BuildingForScene } from "./buildings";
 import { buildHypotheticalBuilding, type HypotheticalBuilding } from "../mutation/applyEdit";
@@ -16,7 +17,6 @@ function buildPreviewBuildings(
   metresPerStorey: number
 ): { buildings: BuildingForScene[]; isRemoval: boolean } {
   if (pendingOp.op === "AddBuilding") {
-    // Use a sentinel addIndex (won't collide with applied buildings).
     const b = buildHypotheticalBuilding(pendingOp, metresPerStorey, 99999);
     return { buildings: [b], isRemoval: false };
   }
@@ -31,11 +31,43 @@ function buildPreviewBuildings(
     return { buildings: members, isRemoval: false };
   }
 
-  // RemoveBuilding: show original cluster with red tint to signal removal.
+  // RemoveBuilding: red tint preview.
   const members = originalBuildings.filter(
     (b) => b.clusterId === pendingOp.targetClusterId
   );
   return { buildings: members, isRemoval: true };
+}
+
+// ─── Per-building applied mesh with click handler ─────────────────────────────
+
+type AppliedMeshProps = {
+  building: HypotheticalBuilding;
+  onBuildingClick?: (clusterId: string, heightM: number) => void;
+};
+
+function AppliedHypoMesh({ building, onBuildingClick }: AppliedMeshProps) {
+  const geo = useMemo(() => buildMergedGeometry([building]), [building]);
+  useEffect(() => () => { geo?.dispose(); }, [geo]);
+
+  if (!geo) return null;
+  return (
+    <mesh
+      geometry={geo}
+      castShadow
+      receiveShadow
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        onBuildingClick?.(building.clusterId, building.heightValue);
+      }}
+    >
+      <meshStandardMaterial
+        color="#d4900a"
+        roughness={0.75}
+        metalness={0.05}
+        side={THREE.FrontSide}
+      />
+    </mesh>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -46,6 +78,7 @@ type Props = {
   originalBuildings: BuildingForScene[];
   clusterRepHeights: Map<string, number>;
   metresPerStorey: number;
+  onBuildingClick?: (clusterId: string, heightM: number) => void;
 };
 
 export function HypotheticalBuildings({
@@ -54,24 +87,14 @@ export function HypotheticalBuildings({
   originalBuildings,
   clusterRepHeights,
   metresPerStorey,
+  onBuildingClick,
 }: Props) {
   const { gl } = useThree();
 
-  // ── Shadow update ──────────────────────────────────────────────────────────
-  // Must fire whenever ghost or applied list changes, not only on Apply,
-  // because autoUpdate=false means the shadow map only refreshes on needsUpdate.
   useEffect(() => {
     gl.shadowMap.needsUpdate = true;
   }, [gl, pendingOp, appliedBuildings]);
 
-  // ── Applied hypothetical buildings (solid amber) ───────────────────────────
-  const appliedGeo = useMemo(
-    () => buildMergedGeometry(appliedBuildings),
-    [appliedBuildings]
-  );
-  useEffect(() => () => { appliedGeo?.dispose(); }, [appliedGeo]);
-
-  // ── Preview ghost ──────────────────────────────────────────────────────────
   const preview = useMemo(() => {
     if (!pendingOp) return null;
     return buildPreviewBuildings(pendingOp, originalBuildings, clusterRepHeights, metresPerStorey);
@@ -85,19 +108,10 @@ export function HypotheticalBuildings({
 
   return (
     <>
-      {/* Applied user-added buildings */}
-      {appliedGeo && (
-        <mesh geometry={appliedGeo} castShadow receiveShadow>
-          <meshStandardMaterial
-            color="#d4900a"
-            roughness={0.75}
-            metalness={0.05}
-            side={THREE.FrontSide}
-          />
-        </mesh>
-      )}
+      {appliedBuildings.map((b) => (
+        <AppliedHypoMesh key={b.id} building={b} onBuildingClick={onBuildingClick} />
+      ))}
 
-      {/* Preview ghost — amber for add/modify, red for remove */}
       {previewGeo && preview && (
         <mesh geometry={previewGeo} castShadow receiveShadow>
           <meshStandardMaterial

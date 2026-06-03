@@ -68,6 +68,7 @@ export function useEditInteraction(
   error: string | null;
   onClusterClick: (clusterId: string) => void;
   onGroundClick: (enu: [number, number]) => void;
+  onHypotheticalClick: (clusterId: string, heightM: number) => void;
   submitText: (text: string) => Promise<void>;
   cancelPreview: () => void;
   clearClick: () => void;
@@ -126,6 +127,15 @@ export function useEditInteraction(
     [clickState, clusters, metresPerStorey]
   );
 
+  const onHypotheticalClick = useCallback(
+    (clusterId: string, heightM: number) => {
+      setPendingPreview(null);
+      setError(null);
+      setClickState({ kind: "building", clusterId, heightM });
+    },
+    []
+  );
+
   const cancelPreview = useCallback(() => {
     setPendingPreview(null);
   }, []);
@@ -143,6 +153,7 @@ export function useEditInteraction(
     error,
     onClusterClick,
     onGroundClick,
+    onHypotheticalClick,
     submitText,
     cancelPreview,
     clearClick,
