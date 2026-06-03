@@ -21,6 +21,8 @@ export default async function Page() {
     <Scene
       buildings={buildings}
       originLatLon={model.originLatLon}
+      clusters={model.clusters}
+      metresPerStorey={model.sources.metresPerStorey}
     />
   );
 }

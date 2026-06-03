@@ -1,37 +1,36 @@
 "use client";
 
-import { useRef, useEffect } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useRef, useEffect, useMemo, useCallback } from "react";
+import { Canvas, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import {
   buildMergedGeometry,
   computeModelBounds,
+  computeClusterAabbs,
   type BuildingForScene,
+  type ClusterAabb,
 } from "./buildings";
 import { useSunDriver } from "./useSunDriver";
 import { SolarControls } from "./SolarControls";
 import { MIN_SUN_ALTITUDE_DEG } from "../solar/sun";
+import { useEditLayer } from "../mutation/editState";
+import { useEditInteraction } from "./useEditInteraction";
+import { EditControls } from "./EditControls";
+import { HypotheticalBuildings } from "./HypotheticalBuildings";
+import type { ClusterIndexEntry } from "../model/types";
 
 // ---------------------------------------------------------------------------
 // Axis mapping (same as buildings.ts, must stay in sync with sun.ts):
 //   ENU east  -> Three.js +X
 //   ENU north -> Three.js -Z
 //   ENU up    -> Three.js +Y
-//
-// Part 3 sun vector: sunDir points FROM ground TOWARD sun. At solar noon
-// (az=180, sun due south), sunDir.z = +cos(alt) > 0 (south is +Z in Three.js).
-// The shadow falls in the anti-sun direction, i.e. toward -Z = north. Correct.
-//
-// Light placement: center + sunDir * radius*2, so the shadow-casting rays travel
-// from the sun's position back toward the scene center.
 // ---------------------------------------------------------------------------
 
 const DEG2RAD = Math.PI / 180;
 
 // ---------------------------------------------------------------------------
-// SceneSetup: configures the directional light and shadow map.
-// Runs useEffect on every sunDir change to update position and needsUpdate.
+// SceneSetup: directional light + shadow map. Manual needsUpdate on sun move.
 // ---------------------------------------------------------------------------
 
 type SetupProps = {
@@ -45,12 +44,10 @@ function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
   const { gl, scene } = useThree();
   const lightRef = useRef<THREE.DirectionalLight>(null);
 
-  // One-time: disable shadow auto-update. Part 3 drives needsUpdate manually.
   useEffect(() => {
     gl.shadowMap.autoUpdate = false;
   }, [gl]);
 
-  // Re-run on every sun change to move the light and resize the frustum.
   useEffect(() => {
     const light = lightRef.current;
     if (!light) return;
@@ -64,7 +61,6 @@ function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
 
     if (!isUsable) {
       light.intensity = 0;
-      // Leave needsUpdate false when sun is below threshold.
       return () => { scene.remove(light.target); };
     }
 
@@ -72,8 +68,6 @@ function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
     light.position.copy(center).addScaledVector(sunDir, radius * 2);
     light.target.position.copy(center);
 
-    // Dynamic frustum: size to current altitude so noon is crisp, clamped at
-    // the 8-degree worst case so the camera does not grow unboundedly.
     const clampedAlt = Math.max(altitude, MIN_SUN_ALTITUDE_DEG);
     const shadowLength = maxHeight / Math.tan(clampedAlt * DEG2RAD);
     const halfExtent = radius + shadowLength;
@@ -83,7 +77,6 @@ function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
     cam.right = halfExtent;
     cam.top = halfExtent;
     cam.bottom = -halfExtent;
-    // Light is at radius*2 from centre; scene extends halfExtent past centre.
     cam.near = radius * 0.1;
     cam.far = radius * 2 + halfExtent * 2;
     cam.updateProjectionMatrix();
@@ -94,25 +87,22 @@ function SceneSetup({ bounds, sunDir, altitude, isUsable }: SetupProps) {
   }, [gl, scene, bounds, sunDir, altitude, isUsable]);
 
   return (
-    <directionalLight
-      ref={lightRef}
-      castShadow
-      intensity={2.5}
-      color="#fff8e7"
-    />
+    <directionalLight ref={lightRef} castShadow intensity={2.5} color="#fff8e7" />
   );
 }
 
 // ---------------------------------------------------------------------------
-// Buildings: merged city geometry, one draw call.
+// Buildings: merged city geometry, rebuilt (via useMemo) when the list changes.
+// Triggers shadowMap.needsUpdate after geometry changes so edits cast shadows.
 // ---------------------------------------------------------------------------
 
 function Buildings({ buildings }: { buildings: BuildingForScene[] }) {
-  const geoRef = useRef<THREE.BufferGeometry | null>(null);
-  if (!geoRef.current) {
-    geoRef.current = buildMergedGeometry(buildings);
-  }
-  const geo = geoRef.current;
+  const { gl } = useThree();
+  const geo = useMemo(() => buildMergedGeometry(buildings), [buildings]);
+
+  useEffect(() => () => { geo?.dispose(); }, [geo]);
+  useEffect(() => { gl.shadowMap.needsUpdate = true; }, [gl, geo]);
+
   if (!geo) return null;
 
   return (
@@ -128,13 +118,56 @@ function Buildings({ buildings }: { buildings: BuildingForScene[] }) {
 }
 
 // ---------------------------------------------------------------------------
-// Ground: large flat plane at y=0, sized to catch low-sun long shadows.
-// At 8 degrees, shadow length = maxHeight / tan(8deg) ~ 7x maxHeight.
+// PickingProxy: one invisible AABB box per cluster.
+// visible={true} keeps it in the R3F raycasting set.
+// colorWrite={false} + depthWrite={false} means it paints nothing onscreen.
 // ---------------------------------------------------------------------------
 
-function Ground({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
+type ProxyProps = {
+  clusterId: string;
+  aabb: ClusterAabb;
+  onClusterClick: (id: string) => void;
+};
+
+function PickingProxy({ clusterId, aabb, onClusterClick }: ProxyProps) {
+  const w = Math.max(aabb.maxE - aabb.minE, 2);
+  const d = Math.max(aabb.maxN - aabb.minN, 2);
+  const h = Math.max(aabb.repHeight, 5);
+  const cx = (aabb.minE + aabb.maxE) / 2;
+  const cy = h / 2;
+  const cz = -((aabb.minN + aabb.maxN) / 2); // ENU north -> Three.js -Z
+
+  return (
+    <mesh
+      position={[cx, cy, cz]}
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        onClusterClick(clusterId);
+      }}
+    >
+      <boxGeometry args={[w, h, d]} />
+      <meshBasicMaterial
+        transparent
+        opacity={0}
+        colorWrite={false}
+        depthWrite={false}
+      />
+    </mesh>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ground: flat plane at y=0. Captures pointer-down for ground clicks.
+// event.point is in Three.js world space; ENU = [point.x, -point.z].
+// ---------------------------------------------------------------------------
+
+type GroundProps = {
+  bounds: ReturnType<typeof computeModelBounds>;
+  onGroundClick: (enu: [number, number]) => void;
+};
+
+function Ground({ bounds, onGroundClick }: GroundProps) {
   const { center, radius, maxHeight } = bounds;
-  // Extend ground to cover worst-case shadow length at MIN_SUN_ALTITUDE_DEG.
   const groundHalf = radius + maxHeight / Math.tan(MIN_SUN_ALTITUDE_DEG * DEG2RAD);
   const size = groundHalf * 2;
 
@@ -143,6 +176,10 @@ function Ground({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }) {
       rotation={[-Math.PI / 2, 0, 0]}
       position={[center.x, 0, center.z]}
       receiveShadow
+      onPointerDown={(e: ThreeEvent<PointerEvent>) => {
+        e.stopPropagation();
+        onGroundClick([e.point.x, -e.point.z]);
+      }}
     >
       <planeGeometry args={[size, size]} />
       <meshStandardMaterial color="#4a5240" roughness={1} metalness={0} />
@@ -159,11 +196,7 @@ function CameraRig({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }
 
   useEffect(() => {
     const { center, radius } = bounds;
-    camera.position.set(
-      center.x,
-      center.y + radius * 0.7,
-      center.z + radius * 1.4
-    );
+    camera.position.set(center.x, center.y + radius * 0.7, center.z + radius * 1.4);
     camera.lookAt(center);
   }, [camera, bounds]);
 
@@ -179,27 +212,58 @@ function CameraRig({ bounds }: { bounds: ReturnType<typeof computeModelBounds> }
 }
 
 // ---------------------------------------------------------------------------
-// Scene: client root. Receives slim building data + originLatLon from server.
+// Scene: client root.
 // ---------------------------------------------------------------------------
 
 export type SceneProps = {
   buildings: BuildingForScene[];
   originLatLon: [number, number];
+  clusters: Record<string, ClusterIndexEntry>;
+  metresPerStorey: number;
 };
 
-export function Scene({ buildings, originLatLon }: SceneProps) {
-  const bounds = computeModelBounds(buildings);
+export function Scene({ buildings, originLatLon, clusters, metresPerStorey }: SceneProps) {
+  // Cluster representative heights for proportional scaling on Modify.
+  const clusterRepHeights = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [id, entry] of Object.entries(clusters)) {
+      m.set(id, entry.representativeHeight_m);
+    }
+    return m;
+  }, [clusters]);
+
+  // Edit state: overlay, log, undo.
+  const editLayer = useEditLayer(buildings, clusterRepHeights, metresPerStorey);
+
+  // Click and LLM interaction state.
+  const interaction = useEditInteraction(clusters, metresPerStorey);
+
+  // Apply: commit pending preview to the edit log, clear interaction state.
+  const handleApply = useCallback(() => {
+    const op = interaction.pendingPreview?.op;
+    if (!op) return;
+    editLayer.applyOp(op);
+    interaction.cancelPreview();
+    interaction.clearClick();
+  }, [interaction, editLayer]);
+
+  const bounds = useMemo(
+    () => computeModelBounds(buildings),
+    [buildings]
+  );
   const sun = useSunDriver(originLatLon);
+
+  // Per-cluster AABBs for picking proxies.
+  const clusterAabbs = useMemo(
+    () => computeClusterAabbs(buildings, clusterRepHeights),
+    [buildings, clusterRepHeights]
+  );
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
       <Canvas
         shadows={{ type: THREE.PCFSoftShadowMap }}
-        camera={{
-          fov: 45,
-          near: 1,
-          far: bounds.radius * 8,
-        }}
+        camera={{ fov: 45, near: 1, far: bounds.radius * 8 }}
         gl={{ antialias: true }}
       >
         <ambientLight intensity={0.4} color="#b0c4d8" />
@@ -210,12 +274,49 @@ export function Scene({ buildings, originLatLon }: SceneProps) {
           altitude={sun.altitude}
           isUsable={sun.isUsable}
         />
-        <Buildings buildings={buildings} />
-        <Ground bounds={bounds} />
+
+        {/* Real city buildings, with edits applied (Modify scales heights, Remove hides). */}
+        <Buildings buildings={editLayer.realBuildings} />
+
+        {/* Invisible per-cluster picking proxies. */}
+        {Array.from(clusterAabbs.entries()).map(([clusterId, aabb]) => (
+          <PickingProxy
+            key={clusterId}
+            clusterId={clusterId}
+            aabb={aabb}
+            onClusterClick={interaction.onClusterClick}
+          />
+        ))}
+
+        {/* Preview ghost + applied hypothetical buildings. */}
+        <HypotheticalBuildings
+          pendingOp={interaction.pendingPreview?.op ?? null}
+          appliedBuildings={editLayer.hypotheticalBuildings}
+          originalBuildings={buildings}
+          clusterRepHeights={clusterRepHeights}
+          metresPerStorey={metresPerStorey}
+        />
+
+        {/* Ground plane — receives shadows and captures ground clicks. */}
+        <Ground bounds={bounds} onGroundClick={interaction.onGroundClick} />
+
         <CameraRig bounds={bounds} />
       </Canvas>
 
       <SolarControls sun={sun} />
+
+      <EditControls
+        clickState={interaction.clickState}
+        pendingPreview={interaction.pendingPreview}
+        isLoading={interaction.isLoading}
+        error={interaction.error}
+        canUndo={editLayer.canUndo}
+        onSubmitText={interaction.submitText}
+        onApply={handleApply}
+        onCancel={interaction.cancelPreview}
+        onUndo={editLayer.undo}
+        onClearClick={interaction.clearClick}
+      />
     </div>
   );
 }

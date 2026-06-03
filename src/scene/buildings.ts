@@ -105,6 +105,52 @@ export function buildMergedGeometry(
 }
 
 // ---------------------------------------------------------------------------
+// Per-cluster axis-aligned bounding boxes in ENU space.
+// Used for invisible picking proxy meshes in the scene.
+// ---------------------------------------------------------------------------
+
+export type ClusterAabb = {
+  minE: number;
+  maxE: number;
+  minN: number;
+  maxN: number;
+  repHeight: number;
+};
+
+export function computeClusterAabbs(
+  buildings: BuildingForScene[],
+  clusterRepHeights: Map<string, number>
+): Map<string, ClusterAabb> {
+  const map = new Map<
+    string,
+    { minE: number; maxE: number; minN: number; maxN: number; repHeight: number }
+  >();
+
+  for (const b of buildings) {
+    if (!map.has(b.clusterId)) {
+      map.set(b.clusterId, {
+        minE: Infinity,
+        maxE: -Infinity,
+        minN: Infinity,
+        maxN: -Infinity,
+        repHeight: clusterRepHeights.get(b.clusterId) ?? b.heightValue,
+      });
+    }
+    const aabb = map.get(b.clusterId)!;
+    for (const ring of b.footprint) {
+      for (const pt of ring) {
+        if (pt[0] < aabb.minE) aabb.minE = pt[0];
+        if (pt[0] > aabb.maxE) aabb.maxE = pt[0];
+        if (pt[1] < aabb.minN) aabb.minN = pt[1];
+        if (pt[1] > aabb.maxN) aabb.maxN = pt[1];
+      }
+    }
+  }
+
+  return map as Map<string, ClusterAabb>;
+}
+
+// ---------------------------------------------------------------------------
 // Bounding box over all footprint vertices in Three.js space.
 // Used by Scene.tsx to position the camera and size the shadow frustum.
 // ---------------------------------------------------------------------------
