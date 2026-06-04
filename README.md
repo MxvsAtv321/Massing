@@ -12,13 +12,13 @@ A user types "add a 30-storey tower here." They see the shadow sweep across St. 
 
 ## What it does
 
-- Renders real City of Toronto 3D massing data for the St. Lawrence / St. James Park area
-- Computes sun position with atmospheric refraction via `astronomy-engine` for any time in Toronto local time
-- Casts geometric shadow polygons as the measurement source of truth (PCF shadows for the interactive sweep, polygons for every printed number)
-- Lets a user click a location and type a change; the LLM emits a structured `EditOp`, never computes geometry
-- Shows per-building data-quality badges: measured, estimated, or hypothetical
-- Attaches a confidence band to every shadow readout, propagated from real height uncertainty
-- Names what it will not model: traffic change, displacement, property values, human movement, ground slope
+- Renders real City of Toronto 3D massing data for the St. Lawrence / St. James Park area, with every polygon extruded at its own measured height
+- Computes sun position with atmospheric refraction via `astronomy-engine` for any time in Toronto local time, scrubbed to valid solar hours
+- Casts PCF shadows for interactive feedback and geometric shadow polygons as the measurement source of truth for every printed number
+- Accepts a click for location and a natural-language description of a change; the LLM returns a structured `EditOp`, previews it as a diff, and applies it only on confirmation
+- Shows per-building data-quality badges distinguishing measured, estimated, and hypothetical buildings
+- Attaches a confidence band to every shadow readout, propagated from real height uncertainty by source
+- Names what it will not model: traffic change, displacement, property values, human movement, ground slope -- these are explicit do-NOT-measure disclosures, not gaps
 - Bakes provenance into the exported image so the footer survives a screenshot pasted into a council slide
 
 ## What it does not do
@@ -30,11 +30,13 @@ Ground slope and terrain, footprint and position error, behavioral predictions o
 - Next.js 15 App Router, TypeScript, Vercel, pnpm
 - React Three Fiber / Three.js for 3D
 - `astronomy-engine` as the single solar engine (refraction on, validated against NREL SPA)
-- Local ENU tangent plane anchored at the neighborhood centroid, metric units throughout
+- Local ENU tangent plane anchored at the neighborhood centroid, metric units throughout; never Web Mercator for shadow geometry
 
 ## Data
 
-`data/stlawrence.geojson` is a baked snapshot of City of Toronto 3D Massing data, clipped to the St. Lawrence neighborhood, reprojected to local ENU. Heights are the `AVG_HEIGHT` field (height above grade, metres), measured by LiDAR. The snapshot is the single source; nothing is fetched at build or runtime.
+`data/stlawrence.geojson` is a baked snapshot of City of Toronto 3D Massing data, clipped to the St. Lawrence neighborhood. Heights are the `AVG_HEIGHT` field (height above grade, metres), measured by LiDAR and Site Plan sources. The snapshot is the single source; nothing is fetched at build or runtime.
+
+Tall buildings are often split across podium and shaft polygons. Every polygon is kept and extruded at its own height. The grouping subsystem clusters polygons into logical buildings for identity and readouts, using the cluster maximum as the representative height.
 
 Provenance: City of Toronto 3D Massing 2025, dated 2025-12-05.
 
