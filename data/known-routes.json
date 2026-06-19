@@ -1,0 +1,37 @@
+{
+  "tolerance_pct": 15,
+  "_note": "Routing, oneway, and alignment ground truth for scripts/verify-network.ts, the analogue of known-heights.json. Intersection coordinates are real OSM graph nodes verified to sit on the named corner. Route ground truth is the straight-line (single street) or Manhattan (one turn) geometric distance between the named corners, an independent geometric measure; the gate asserts the graph's routed Dijkstra distance reproduces it within tolerance. This catches scale errors (a Web Mercator 1.38x bug would blow the tolerance), missing edges (a gap forces a long detour), and gross topology faults. Oneway directions are the real downtown directions: Adelaide St E eastbound, Richmond St E westbound (the Richmond-Adelaide one-way pair). Alignment uses building coordinates from known-heights.json reprojected through the shared city origin; if road and buildings did not share one frame, the nearest road node would be far away.",
+  "intersections": {
+    "king_jarvis": { "lonlat": [-79.371896, 43.650464], "name": "King St E & Jarvis St" },
+    "king_church": { "lonlat": [-79.374398, 43.649917], "name": "King St E & Church St" },
+    "king_sherbourne": { "lonlat": [-79.368249, 43.651279], "name": "King St E & Sherbourne St" },
+    "king_yonge": { "lonlat": [-79.377895, 43.649169], "name": "King St E & Yonge St" },
+    "front_jarvis": { "lonlat": [-79.371454, 43.649465], "name": "Front St E & Jarvis St" },
+    "front_church": { "lonlat": [-79.373775, 43.648435], "name": "Front St E & Church St" }
+  },
+  "routes": [
+    { "from": "king_jarvis", "to": "king_church", "groundTruthMetres": 210, "note": "one block west on King St E (two-way)" },
+    { "from": "king_sherbourne", "to": "king_jarvis", "groundTruthMetres": 308, "note": "one long block west on King St E (two-way)" },
+    { "from": "king_church", "to": "front_church", "groundTruthMetres": 172, "note": "one block south on Church St (two-way)" },
+    { "from": "king_jarvis", "to": "front_jarvis", "groundTruthMetres": 117, "note": "one block south on Jarvis St (two-way)" },
+    { "from": "king_church", "to": "front_jarvis", "groundTruthMetres": 327, "note": "King St E east to Jarvis, then south to Front (Manhattan, one turn)" }
+  ],
+  "onewayChecks": [
+    {
+      "name": "Adelaide St E eastbound",
+      "fromLonlat": [-79.37645, 43.65086],
+      "toLonlat": [-79.37538, 43.65108],
+      "note": "Adelaide St E is one-way eastbound; the eastbound edge must exist and the reverse must not"
+    },
+    {
+      "name": "Richmond St E westbound",
+      "fromLonlat": [-79.37157, 43.65283],
+      "toLonlat": [-79.37207, 43.65271],
+      "note": "Richmond St E is one-way westbound; the westbound edge must exist and the reverse must not"
+    }
+  ],
+  "alignmentChecks": [
+    { "name": "L Tower vs nearest road node", "lonlat": [-79.376312, 43.646172], "maxNodeDistMetres": 60 },
+    { "name": "88 Scott vs nearest road node", "lonlat": [-79.376495, 43.648434], "maxNodeDistMetres": 80 }
+  ]
+}

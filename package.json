@@ -11,7 +11,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "verify:heights": "tsx scripts/verify-heights.ts",
-    "verify:solar": "tsx scripts/verify-solar.ts"
+    "verify:solar": "tsx scripts/verify-solar.ts",
+    "fetch:network": "tsx scripts/fetch-network.ts",
+    "verify:network": "tsx scripts/verify-network.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
