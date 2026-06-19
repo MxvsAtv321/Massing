@@ -1,0 +1,43 @@
+{
+  "dataset": "City of Toronto 3D Massing 2025",
+  "datasetUrl": "https://open.toronto.ca/dataset/3d-massing/",
+  "license": "Open Government Licence - Toronto",
+  "vintage": "2025",
+  "retrievedDate": "2025-12-05",
+  "sourceCrs": "EPSG:3857",
+  "accuracyDisclaimer": "City Planning provides massing data for information and illustrative purposes only; no warranty of fitness for any precision purpose.",
+  "heightField": "AVG_HEIGHT",
+  "groundField": "SURF_ELEV",
+  "heightMslField": "HEIGHT_MSL",
+  "artifactFilter": {
+    "field": "SURF_ELEV",
+    "value": 130.07,
+    "epsilon": 0.01
+  },
+  "sourceField": "HEIGHT_SRC",
+  "heightAccuracyBySource": {
+    "Lidar-Derived": {
+      "kind": "measured",
+      "sigma_m": 0.5,
+      "citation": "Sigma anchored on observed building-height error, not bare-ground LiDAR point accuracy. 88 Scott (Lidar-Derived) reads 197.7 m vs CTBUH 198.2 m, a 0.5 m discrepancy. NRCan CQL1 specifies bare-ground RMSEz <= 0.10 m, but rooftop returns on tall/irregular surfaces degrade to ~0.2-0.3 m and AVG_HEIGHT is a footprint-averaged value. 0.5 m is the observed building-height discrepancy, used as a defensible floor. https://natural-resources.canada.ca/science-data/science-research/natural-hazards/flood-mapping/federal-airborne-lidar-data-acquisition-guideline",
+      "_note_uncertainty": "Based on n=1 observed building-height discrepancy plus the national LiDAR floor. A 0.10 m sigma (bare-ground point accuracy) implies sub-decimetre shadow precision on a 200 m tower, which is false precision and violates the refuse-false-precision rule. 0.5 m is conservative given the small sample; raise it if more discrepancies are observed."
+    },
+    "Site Plan": {
+      "kind": "estimated",
+      "sigma_m": 5.0,
+      "note": "Site-plan heights are design or permit-submission figures and may include mechanical penthouses, parapets, or rounded-up floor heights not present in the as-built structure. Observed cases: (1) One York Street reads AVG_HEIGHT=160.4 m in the dataset vs. as-built roof of 156.8 m per CTBUH Skyscraper Center (https://www.skyscrapercenter.com/building/one-york-street/15431), an overshoot of +3.6 m (~2.3%). (2) In a prior cross-check session, the same building was found at +24 m overshoot in a different polygon cluster (a podium-fragmentation artifact, not a true site-plan error). The consistent, non-fragmented overshoot is ~3\u20135 m. sigma_m=5.0 m is set conservatively to bound typical mechanical-penthouse inclusion (~1 storey \u2248 3 m) with margin."
+    }
+  },
+  "defaultHeightAccuracy": {
+    "kind": "estimated",
+    "sigma_m": 5.0,
+    "note": "Conservative sigma for features where HEIGHT_SRC is null, '3D Model', 'Photogrammetrics', 'Oblique Aerials', or any unlisted source. Set equal to the Site Plan sigma (the less accurate of the two documented categories) because unknown-source features may have been derived from design drawings, photogrammetric workflows of varying vintage, or manual digitising. Does not apply to Lidar-Derived features, which use sigma_m=0.10 m."
+  },
+  "metresPerStorey": 3.0,
+  "bandScopeNote": "v1 band is height-only; footprint geometry error, horizontal position error, and building fragmentation (podium vs. tower polygon splitting) are excluded from the uncertainty band and are listed in the do-NOT-measure list.",
+  "_sigmaDerivationNotes": {
+    "LiDAR_basis": "Anchored on observed building-height error (88 Scott: 0.5 m), not the 0.10 m bare-ground RMSEz. Rooftop returns degrade to 0.2-0.3 m; AVG_HEIGHT is footprint-averaged. sigma_m=0.5 m as a defensible floor; n=1, raise with more observations.",
+    "SitePlan_basis": "Observed One York overshoot: +3.6 m. One-storey penthouse margin adds ~3 m. sigma_m=5.0 m chosen as 1-sigma bound covering ~95% of expected overestimates within 10 m (2-sigma). Consistent with typical construction tolerance literature for high-rise permit drawings.",
+    "default_basis": "Set to Site Plan sigma because no more specific provenance is available. Conservative choice per project honesty principle."
+  }
+}

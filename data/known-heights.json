@@ -1,0 +1,46 @@
+{
+  "tolerance_m_default": 8,
+  "_note": "Gate ground truth. Heights are rooftop above grade, excluding masts/spires (CTBUH where cited). Trimmed to towers whose coordinates resolve to the correct dataset polygon. Dropped from Perplexity's set: Harbour Plaza East/West (no 233/224 m polygon exists at their waterfront location in this clip; the only 220-240 m polygons belong to a different, heavily fragmented building ~700-1200 m north) and 158 Front St E (given coordinate landed on a 15.8 m building; no ~91 m polygon is identifiable at its true location in-clip). match towers were verified: the containing or nearest polygon's AVG_HEIGHT is within tolerance of documented.",
+  "towers": [
+    {
+      "name": "L Tower",
+      "lonlat": [
+        -79.376312,
+        43.646172
+      ],
+      "documentedHeight_m": 205.0,
+      "mode": "match",
+      "note": "Roof height 205 m, 59 floors. Source: CTBUH Skyscraper Center https://www.skyscrapercenter.com/building/l-tower/1573 and Wikipedia List of Tallest Buildings in Toronto (43\u00b038'46\"N 79\u00b022'35\"W). Address: 8 The Esplanade. Dataset AVG_HEIGHT confirmed 205.03 m (3D Model source, 7 m footprint match). Exact to 0.03 m."
+    },
+    {
+      "name": "88 Scott",
+      "lonlat": [
+        -79.376495,
+        43.648434
+      ],
+      "documentedHeight_m": 198.2,
+      "mode": "match",
+      "note": "Roof height 198.2 m, 58 floors. Source: CTBUH Skyscraper Center https://www.skyscrapercenter.com/building/88-scott/13864 and Wikipedia List of Tallest Buildings in Toronto. Address: 88 Scott Street. Completed 2017. Dataset AVG_HEIGHT reads 197.7 m (Lidar-Derived, 1 m footprint match), within 0.5 m of CTBUH figure \u2014 strong match. Note: SKYDB lists 204 m, a discrepancy of ~6 m vs. CTBUH; CTBUH is preferred as the authoritative rooftop-only measurement standard."
+    },
+    {
+      "name": "One York Street",
+      "lonlat": [
+        -79.38077,
+        43.642192
+      ],
+      "documentedHeight_m": 156.8,
+      "mode": "known_discrepancy",
+      "note": "As-built roof 156.8 m (CTBUH https://www.skyscrapercenter.com/building/one-york-street/15431). Dataset AVG_HEIGHT=160.4 m (Site Plan), +3.6 m above as-built, consistent with mechanical penthouse. Primary basis for the Site Plan sigma. Coordinate snapped to the matching dataset polygon (id 355041); Perplexity's original coordinate was ~105 m off. known_discrepancy: gate asserts a wide band here, not a height pass."
+    },
+    {
+      "name": "Success Tower 2 (33 Bay Residences)",
+      "lonlat": [
+        -79.376892,
+        43.643204
+      ],
+      "documentedHeight_m": 173.3,
+      "mode": "match",
+      "note": "Roof height 173.3 m, 55 floors, residential. Source: Wikipedia List of Tallest Buildings in Toronto (43\u00b038'36\"N 79\u00b022'37\"W). Address: 33 Bay Street. Completed 2010. Also known as 33 Bay Residences at Pinnacle Centre. Mid-range height useful for shadow cross-check between L Tower and One York bands."
+    }
+  ]
+}
