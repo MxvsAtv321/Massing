@@ -68,3 +68,29 @@ Context: scope discipline. Shadow is the hero and must be correct and validated 
 Decision: ship shadow-only until it is demo-solid and validated. If time remains, add FAR through the consequence interface: gross floor area over site area, site area from the clicked or drawn lot, a 3 metre per storey assumption disclosed and fed into the band as estimated. Final inclusion is decided at kickoff against the posed problem.
 
 Consequences: protects the hero. FAR is additive and isolated, so the decision can wait. Sky view factor and walkability stay out of v1; their cost is recorded in `docs/architecture.md` section 8. If FAR ships, it needs a site area, which comes from the click or a drawn polygon, not a parcel dataset.
+
+---
+
+## ADR-006: Traffic is a wind tunnel, demand is set, flow is simulated, induced demand is never predicted
+
+Status: Accepted
+Date: 2026-06-19
+
+Context: the traffic subsystem could easily slide into the exact thing this tool refuses, predicting the behavioral consequences of a development. The do-NOT-measure list already refuses "Traffic change" because trip generation and routing need behavioral models not grounded in geometry. A traffic feature that predicts the demand a tower creates would break the honesty brand outright. But there is an honest version: treat traffic like a wind tunnel, where you set the wind and watch the physics.
+
+Decision: the honest boundary is absolute and has three categories. Demand (how many trips want to go from where to where) is never predicted by us, in particular never induced demand from a development; when demand exists in the product it is a user-set scenario badged as an assumption, like a user-added building is badged hypothetical. Flow (how a given demand distributes across the network, the per-edge volumes and speeds) is physics we simulate, with a confidence band. Counts (real measured Toronto open-data vehicle counts) are facts with a source and a date, used to validate the flow simulator and shown only as a factual readout. The product may say "under a demand scenario you set, here is how flow behaves, and here is how the simulator scores against measured counts." The product may never say "this development will cause this much traffic."
+
+Consequences: traffic does not implement the geometry-derived `Consequence` interface, because flow depends on a user-set scenario, not on geometry alone; it lives in its own `src/traffic/` subsystem with its own honesty contract, which is the structural enforcement of this boundary. The existing do-NOT-measure "Traffic change" entry stays true and stays refused, and is refined to draw the demand-versus-flow distinction only when demand actually ships (the demand part), not before. Full rationale in `docs/traffic-architecture.md`.
+
+---
+
+## ADR-007: Road network from OpenStreetMap via Overpass, baked and ENU-aligned to the city model
+
+Status: Accepted
+Date: 2026-06-19
+
+Context: the traffic subsystem needs a routable street network for the St. Lawrence / St. James Park catchment. It must share the city model's exact ENU frame, or roads and buildings drift apart on screen and every future travel time is wrong. The City 3D Massing data has no street network, so the network comes from a separate source. Two acquisition paths exist: osmnx in Python, purpose-built for a correct drivable graph, or an Overpass query processed in TypeScript.
+
+Decision: source the drivable network from OpenStreetMap (Open Database License, attribution to OpenStreetMap contributors), fetched once via the Overpass API by `scripts/fetch-network.ts` into `data/network.json`, never fetched at app build or runtime. The snapshot stores raw lon/lat and normalized tags; at load, `parseRoadNetwork` reprojects every node through `src/coords/enu.ts` using the city model's own computed origin, so road and building share one frame by construction. Distances are never computed in EPSG:3857 metres. The drivable filter mirrors osmnx's `drive` type and excludes service roads and all non-drivable ways; the in and out lists are documented in `docs/traffic-architecture.md` section 4.4. Oneway tags become directed edges (two-way to two opposing edges, oneway to one, `oneway=-1` reversed; roundabouts and motorways default oneway when untagged). The acquisition uses Overpass plus TypeScript rather than osmnx, to keep one toolchain (`tsx` is already a devDependency) and exact control over the shared-origin reprojection; the verification gate guarantees correctness independent of the acquisition tool.
+
+Consequences: the catchment bounding box (south 43.6400, north 43.6540, west -79.3850, east -79.3650) is larger than the building clip so traffic can enter and leave through the cordon arterials, the cordon reused in Part 3. The network is gated by `scripts/verify-network.ts` (connectivity, geometry, oneway, known routes, alignment) against the real snapshot, mirroring the height-verification gate. `data/known-routes.json` is the routing ground truth, the analogue of `data/known-heights.json`.
