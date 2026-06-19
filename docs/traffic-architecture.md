@@ -59,23 +59,23 @@ consequence, because trip generation and routing require behavioral models not g
 in geometry. That entry stays true and stays refused: we do not predict the demand a
 development creates. The wind tunnel does not contradict it. It adds a different,
 honest capability next to it: flow under a demand the user assumes, validated against
-real counts. The do-NOT-measure entry will be refined to draw this distinction in the
-part that actually ships demand (Part 2), not before, because until then there is no
-demand or flow in the product and refining the wording early would describe something
-that does not exist yet.
+real counts. Now that demand ships (Part 2), the do-NOT-measure entry is refined to draw
+this distinction: induced travel demand (the trips a development generates) stays
+refused, and the demand shown is named as a user-set scenario, not a prediction.
 
 ---
 
 ## 2. Build arc
 
-Four parts. This document ships with Part 1. Later parts get their own design notes.
+Four parts. Parts 1 and 2 are detailed here; later parts get their own design notes.
 
 1. Network foundation (this part). A typed, provenance-stamped, gated, aligned, quietly
    rendered directed road graph in the city ENU frame. No vehicles, no demand, no flow,
    no routing UI.
-2. Demand as a scenario. UI to set origin-destination demand across a small set of
-   zones and the cordon, every input badged as a user assumption. No prediction of
-   demand from massing.
+2. Demand as a scenario (this part now). UI to set origin-destination through-traffic
+   demand between cordon gateways, every input badged as a user assumption, set
+   explicitly (not via the LLM), never derived from massing. Drawn as desire lines, not
+   street flow. Detailed in section 5.
 3. Flow simulation. Assign the user's demand onto the network and simulate flow physics.
    Starting point is static macroscopic assignment with a volume-delay relationship
    (travel time rises with volume over capacity), producing per-edge volumes and speeds
@@ -260,3 +260,79 @@ connectivity status, and the gate line.
 No vehicles, no demand, no flow, no routing UI, no behavioral modeling, and no change to
 the do-NOT-measure list yet. Just a correct, aligned, gated, quietly rendered network and
 this document framing the honest boundary for everything after it.
+
+---
+
+## 5. Part 2: demand as a user-set scenario
+
+This is the "set the wind" half of the wind tunnel. The user defines the traffic demand
+as an explicit scenario; the tool never invents it. No flow, routing, counts, or
+animation here (those are Parts 3 and 4). Part 2 produces a valid, gated, Part-3-ready
+origin-destination demand scenario and an honest way to set and see it.
+
+### 5.1 Scope: cordon-only
+
+Demand is origin-destination through-traffic between cordon gateways, the points where
+the catchment's arterials cross the boundary. Demand visibly enters and leaves at the
+edge and is never tied to a building, which keeps the honest boundary crisp. Internal
+trip generators (trips to or from a clicked point, for instance at a new development) are
+deferred to a later part, because a generator placed at a new tower visually flirts with
+"the building creates demand" even when the number stays user-set.
+
+### 5.2 The honest boundary, structurally enforced
+
+- Demand is a user assumption. Every trip number is set by the user, badged as a scenario
+  assumption, provenance-stamped (`DemandProvenance`, kind `user-scenario`), never a model
+  output.
+- Never predicted from massing. There is no code path from buildings or edits to demand;
+  `src/traffic/` does not depend on the massing or edit layers.
+- Set explicitly, not via the LLM. Demand is numbers the user dials, so the model never
+  interprets or invents demand (ADR-008). This is deliberately unlike the massing layer,
+  which uses the LLM, because demand is exactly the thing we refuse to let a model produce.
+- Desire lines, not flow. Demand is drawn as straight origin-to-destination arcs between
+  gateways (intent), explicitly not routed onto streets. Street flow arrives in Part 3 and
+  looks different on purpose, so the two are never confused on screen.
+
+### 5.3 Cordon gateways
+
+Curated in `data/cordon.json` (the major arterial crossings of the boundary, by side),
+the same hand-authored pattern as `data/known-routes.json`. At load,
+`src/traffic/cordon.ts` `resolveCordon` reprojects each gateway lon/lat through the
+network's own origin and snaps it to the nearest strongly connected network node, so every
+gateway is routable in Part 3 by construction. The south edge is mostly pruned waterfront,
+so it may carry few or no gateways; through-traffic is dominated by the east-west and
+north-south arterials.
+
+### 5.4 The demand model
+
+`src/traffic/demand.ts` (pure): `Place` (a resolved gateway with its connector node),
+`ODFlow` (`fromPlaceId`, `toPlaceId`, `tripsPerHour`), `DemandScenario` (flows plus
+provenance). Helpers validate a flow (bounded non-negative integer trips, distinct
+endpoints, known places), summarise conservation (trips generated versus attracted per
+gateway), and build a balanced example peak scenario for a "load example" button. The
+demand state lives in a client hook (`useDemandScenario`), mirroring the massing edit
+layer.
+
+### 5.5 Render and controls
+
+A Demand toggle (alongside Roads and Quality) reveals the demand layer and panel; building
+editing stays independent. `DemandLayer` draws clickable gateway markers at the cordon and
+the desire lines as cool-toned translucent arcs raised above the ground, contrasting the
+warm-grey roads, width by trips. `DemandControls` is a dark-glass panel to pick an
+origin-destination pair, set bounded trips per hour, list and remove flows, load the
+example, and clear, with the disclosure that demand is an assumption the user sets and the
+tool never predicts the demand a development creates.
+
+### 5.6 The gate
+
+`scripts/verify-demand.ts` is a structural gate (demand is an assumption, so there is no
+falsification oracle; the gate proves the scenario is well-formed and Part-3-ready against
+the real network). It asserts every gateway resolves to a strongly-connected node within
+`maxResolveMetres`, the connector nodes are distinct, the through directions (east and
+west) are present, and the example scenario is valid and conserved.
+
+### 5.7 Non-goals for Part 2
+
+No flow simulation, routing or assignment, traffic counts, or animation (Parts 3 and 4).
+No internal trip generators. No LLM involvement in demand. No change to the shadow export
+hero beyond keeping the "not modeled" wording accurate.
