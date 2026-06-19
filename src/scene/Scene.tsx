@@ -19,12 +19,15 @@ import { useEditLayer } from "../mutation/editState";
 import { useEditInteraction } from "./useEditInteraction";
 import { EditControls } from "./EditControls";
 import { HypotheticalBuildings } from "./HypotheticalBuildings";
+import { RoadNetwork } from "./RoadNetwork";
+import { NetworkReadout } from "./NetworkReadout";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
 import type { ClusterIndexEntry } from "../model/types";
 import type { ClusterProvenanceEntry } from "../honesty/confidence";
 import type { FooterSourcesSlice } from "../honesty/footer";
+import type { RoadEdgeForScene, NetworkStats } from "./roadGeometry";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -251,6 +254,8 @@ export type SceneProps = {
   metresPerStorey: number;
   clusterProvenances: Record<string, ClusterProvenanceEntry>;
   sourcesFooter: FooterSourcesSlice;
+  roadEdges: RoadEdgeForScene[];
+  networkStats: NetworkStats;
 };
 
 export function Scene({
@@ -260,8 +265,11 @@ export function Scene({
   metresPerStorey,
   clusterProvenances,
   sourcesFooter,
+  roadEdges,
+  networkStats,
 }: SceneProps) {
   const [tintByConfidence, setTintByConfidence] = useState(false);
+  const [showRoads, setShowRoads] = useState(true);
 
   // Ref to the WebGL canvas for PNG export.
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -343,6 +351,8 @@ export function Scene({
 
         <Ground bounds={bounds} onGroundClick={interaction.onGroundClick} />
 
+        <RoadNetwork edges={roadEdges} visible={showRoads} />
+
         <CameraRig bounds={bounds} />
         <CanvasCapture onCapture={captureCanvas} />
       </Canvas>
@@ -371,6 +381,8 @@ export function Scene({
 
       <DoNotMeasurePanel />
 
+      <NetworkReadout stats={networkStats} />
+
       {/* Bottom-right: data-quality toggle + legend + export */}
       <div style={styles.bottomRight}>
         {tintByConfidence && (
@@ -384,6 +396,12 @@ export function Scene({
           </div>
         )}
         <div style={styles.controlRow}>
+          <button
+            onClick={() => setShowRoads((r) => !r)}
+            style={{ ...styles.ctrlBtn, ...(showRoads ? styles.ctrlBtnActive : {}) }}
+          >
+            {showRoads ? "● Roads" : "○ Roads"}
+          </button>
           <button
             onClick={() => setTintByConfidence((t) => !t)}
             style={{ ...styles.ctrlBtn, ...(tintByConfidence ? styles.ctrlBtnActive : {}) }}

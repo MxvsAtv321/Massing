@@ -1,14 +1,22 @@
 import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { loadRoadNetwork } from "../src/network/build";
 import { Scene } from "../src/scene/Scene";
 import { buildClusterProvenances } from "../src/honesty/confidence";
 import type { BuildingForScene } from "../src/scene/buildings";
+import type { RoadEdgeForScene, NetworkStats } from "../src/scene/roadGeometry";
 import type { FooterSourcesSlice } from "../src/honesty/footer";
 
 export default async function Page() {
   const model = await loadCityModel(
     path.join(process.cwd(), "data", "stlawrence.geojson"),
     path.join(process.cwd(), "data", "sources.json")
+  );
+
+  // Road network shares the city model's exact ENU origin (alignment by construction).
+  const roadNetwork = loadRoadNetwork(
+    path.join(process.cwd(), "data", "network.json"),
+    model.originLatLon
   );
 
   // Slim client payload: geometry, identity, and confidence kind.
@@ -20,6 +28,26 @@ export default async function Page() {
     confidenceKind:
       b.height.confidence.kind === "measured" ? "measured" : "estimated",
   }));
+
+  // Slim road payload: one centerline per physical street (directed pairs deduped).
+  const seenSeg = new Set<string>();
+  const roadEdges: RoadEdgeForScene[] = [];
+  for (const e of roadNetwork.edges) {
+    const lo = e.from < e.to ? e.from : e.to;
+    const hi = e.from < e.to ? e.to : e.from;
+    const key = `${e.osmWayId}:${lo}-${hi}`;
+    if (seenSeg.has(key)) continue;
+    seenSeg.add(key);
+    roadEdges.push({ polyline: e.geometry, roadClass: e.roadClass });
+  }
+
+  const networkStats: NetworkStats = {
+    graphNodes: roadNetwork.coverage.graphNodes,
+    directedEdges: roadNetwork.coverage.directedEdges,
+    centerlineKm: roadNetwork.coverage.centerlineKm,
+    strandedNodes: roadNetwork.coverage.strandedNodes,
+    connected: roadNetwork.coverage.connected,
+  };
 
   // Per-cluster provenance for the building info panel.
   const clusterProvenances = buildClusterProvenances(model.buildings, model.clusters);
@@ -42,6 +70,8 @@ export default async function Page() {
       metresPerStorey={model.sources.metresPerStorey}
       clusterProvenances={clusterProvenances}
       sourcesFooter={sourcesFooter}
+      roadEdges={roadEdges}
+      networkStats={networkStats}
     />
   );
 }
