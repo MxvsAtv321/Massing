@@ -4,7 +4,9 @@ import { loadCityModel } from "../src/model/loadCityModel";
 import { loadRoadNetwork } from "../src/network/build";
 import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
 import { toRoutableNodes, toRoutableEdges, type RoutableNode, type RoutableEdge } from "../src/traffic/routableGraph";
+import { toEnuStations, type CountsFile, type CountStation } from "../src/traffic/validation";
 import { Scene } from "../src/scene/Scene";
+import type { CountsProvenanceSlice } from "../src/scene/ValidationReadout";
 import { buildClusterProvenances } from "../src/honesty/confidence";
 import type { BuildingForScene } from "../src/scene/buildings";
 import type { NetworkStats } from "../src/scene/roadGeometry";
@@ -53,6 +55,17 @@ export default async function Page() {
   ) as CordonFile;
   const gateways: Place[] = resolveCordon(roadNetwork, cordonFile).places;
 
+  // Real measured traffic counts, reprojected to the shared ENU frame for validation.
+  const countsFile = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "data", "traffic-counts.json"), "utf8")
+  ) as CountsFile;
+  const countStations: CountStation[] = toEnuStations(countsFile, model.originLatLon);
+  const countsProvenance: CountsProvenanceSlice = {
+    dataset: countsFile.provenance.dataset,
+    source: countsFile.provenance.source,
+    retrievedDate: countsFile.provenance.retrievedDate,
+  };
+
   // Per-cluster provenance for the building info panel.
   const clusterProvenances = buildClusterProvenances(model.buildings, model.clusters);
 
@@ -78,6 +91,8 @@ export default async function Page() {
       routableEdges={routableEdges}
       networkStats={networkStats}
       gateways={gateways}
+      countStations={countStations}
+      countsProvenance={countsProvenance}
     />
   );
 }

@@ -25,8 +25,11 @@ import { DemandLayer } from "./DemandLayer";
 import { DemandControls } from "./DemandControls";
 import { FlowOverlay } from "./FlowOverlay";
 import { FlowReadout } from "./FlowReadout";
+import { CountLayer } from "./CountLayer";
+import { ValidationReadout, type CountsProvenanceSlice } from "./ValidationReadout";
 import { useDemandScenario } from "../traffic/useDemandScenario";
 import { useFlow } from "../traffic/useFlow";
+import { matchCountsToEdges, validateFlow, type CountStation } from "../traffic/validation";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
@@ -266,6 +269,8 @@ export type SceneProps = {
   routableEdges: RoutableEdge[];
   networkStats: NetworkStats;
   gateways: Place[];
+  countStations: CountStation[];
+  countsProvenance: CountsProvenanceSlice;
 };
 
 export function Scene({
@@ -279,11 +284,14 @@ export function Scene({
   routableEdges,
   networkStats,
   gateways,
+  countStations,
+  countsProvenance,
 }: SceneProps) {
   const [tintByConfidence, setTintByConfidence] = useState(false);
   const [showRoads, setShowRoads] = useState(true);
   const [showDemand, setShowDemand] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showCounts, setShowCounts] = useState(false);
   const demand = useDemandScenario(gateways);
 
   // Grey road centerlines: one per physical street, deduped from the directed edges.
@@ -303,6 +311,21 @@ export function Scene({
   }, [routableEdges]);
 
   const flow = useFlow(routableNodes, routableEdges, gateways, demand.flows, showFlow);
+
+  // Validation against real measured counts (client-side, pure). Matching is independent
+  // of demand; the fit is recomputed when the flow changes.
+  const countMatches = useMemo(
+    () => matchCountsToEdges(countStations, routableEdges, 30),
+    [countStations, routableEdges]
+  );
+  const validation = useMemo(
+    () => (flow ? validateFlow(countMatches.matches, flow, countStations.length) : null),
+    [countMatches, flow, countStations.length]
+  );
+  const fitById = useMemo(
+    () => (validation ? new Map(validation.perStation.map((s) => [s.id, s])) : null),
+    [validation]
+  );
 
   // Ref to the WebGL canvas for PNG export.
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -388,6 +411,8 @@ export function Scene({
 
         <FlowOverlay edges={routableEdges} flow={flow} visible={showFlow} />
 
+        <CountLayer stations={countStations} fitById={fitById} visible={showCounts} />
+
         <DemandLayer
           places={gateways}
           flows={demand.flows}
@@ -416,8 +441,8 @@ export function Scene({
         onClearClick={interaction.clearClick}
       />
 
-      {/* Top-right is shared: the building info panel and the demand editor are mutually
-          exclusive, switched by the Demand toggle. */}
+      {/* Top-right is shared, by priority: demand editor, then validation, then building
+          info. Demand and Counts each take over the slot when active. */}
       {showDemand ? (
         <DemandControls
           places={gateways}
@@ -430,6 +455,12 @@ export function Scene({
           removeFlow={demand.removeFlow}
           loadExample={demand.loadExample}
           clearFlows={demand.clearFlows}
+        />
+      ) : showCounts ? (
+        <ValidationReadout
+          validation={validation}
+          provenance={countsProvenance}
+          nStations={countStations.length}
         />
       ) : (
         <BuildingInfoPanel
@@ -476,6 +507,12 @@ export function Scene({
             style={{ ...styles.ctrlBtn, ...(showFlow ? styles.ctrlBtnActive : {}) }}
           >
             {showFlow ? "● Flow" : "○ Flow"}
+          </button>
+          <button
+            onClick={() => setShowCounts((c) => !c)}
+            style={{ ...styles.ctrlBtn, ...(showCounts ? styles.ctrlBtnActive : {}) }}
+          >
+            {showCounts ? "● Counts" : "○ Counts"}
           </button>
           <button
             onClick={() => setTintByConfidence((t) => !t)}
