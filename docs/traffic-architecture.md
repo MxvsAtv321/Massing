@@ -67,7 +67,7 @@ refused, and the demand shown is named as a user-set scenario, not a prediction.
 
 ## 2. Build arc
 
-Four parts. Parts 1 and 2 are detailed here; later parts get their own design notes.
+Four parts. Parts 1 to 3 are detailed here; Part 4 gets its own design notes.
 
 1. Network foundation (this part). A typed, provenance-stamped, gated, aligned, quietly
    rendered directed road graph in the city ENU frame. No vehicles, no demand, no flow,
@@ -76,11 +76,11 @@ Four parts. Parts 1 and 2 are detailed here; later parts get their own design no
    demand between cordon gateways, every input badged as a user assumption, set
    explicitly (not via the LLM), never derived from massing. Drawn as desire lines, not
    street flow. Detailed in section 5.
-3. Flow simulation. Assign the user's demand onto the network and simulate flow physics.
-   Starting point is static macroscopic assignment with a volume-delay relationship
-   (travel time rises with volume over capacity), producing per-edge volumes and speeds
-   with a confidence band. The cordon implied by Part 1's catchment carries the
-   external trips in and out.
+3. Flow simulation (this part now). Assign the user's demand onto the network and
+   simulate congested flow physics: incremental static assignment with a BPR volume-delay
+   relationship (travel time rises with volume over capacity), producing per-edge volumes
+   and speeds with a confidence band from capacity uncertainty. Scenario-conditional, not
+   yet validated against counts. Detailed in section 6.
 4. Validation and animation. Score simulated flow against real Toronto open-data counts
    (the falsification anchor, the analogue of `known-heights.json` for routing), and
    bring the live flow animation onto the network stage built in Part 1. Counts are a
@@ -336,3 +336,62 @@ west) are present, and the example scenario is valid and conserved.
 No flow simulation, routing or assignment, traffic counts, or animation (Parts 3 and 4).
 No internal trip generators. No LLM involvement in demand. No change to the shadow export
 hero beyond keeping the "not modeled" wording accurate.
+
+---
+
+## 6. Part 3: flow simulation
+
+The physics half of the wind tunnel: assign the user's demand onto the network and
+simulate congested flow, producing per-edge volumes and speeds with a confidence band.
+This is where dialing the demand makes streets fill and slow. No animation yet (Part 4);
+Part 3 shows the static flow result as colored streets.
+
+### 6.1 The honest boundary holds
+
+Flow is physics we simulate on a fixed network given the demand the user set. It is
+scenario-conditional, never a prediction of demand: `src/traffic/assignment.ts` consumes
+the demand scenario and the network, never the buildings. Flow is not a geometry-derived
+`Consequence` (it depends on user-set demand, not geometry alone), so it stays in
+`src/traffic/` with its own contract. Validation against real Toronto counts is Part 4,
+so Part 3 flow is badged "simulated, not yet validated against counts."
+
+### 6.2 Assignment
+
+Incremental static assignment with a BPR volume-delay function. The demand is loaded in K
+increments; each increment is routed on the current shortest-time paths (Dijkstra weighted
+by current edge travel time), volumes accumulate, and edge times are then updated by
+`t = t0 * (1 + alpha * (v / c)^beta)` (alpha 0.15, beta 4). Incremental assignment gives
+the congestion feedback that makes the tunnel meaningful, adding demand slows roads and
+reroutes traffic, without a full Frank-Wolfe equilibrium solver. The approximation is
+disclosed. Free-flow time is `lengthMetres / (speedLimitKph / 3.6)`; per-direction
+capacity is `directedLanes * perLaneCapacity(roadClass)`, with `directedLanes` equal to
+`lanes` for a oneway and `round(lanes / 2)` for a two-way street (a disclosed assumption).
+
+### 6.3 The confidence band
+
+Capacity is the most uncertain input, especially where Part 1 had to default the OSM
+`lanes` tag (the `defaulted` honesty flag on each edge). The band comes from a Monte Carlo
+over capacity: the assignment runs once at nominal capacity (the mid) plus several
+seeded-perturbed runs with per-edge multiplicative capacity noise, wider for `defaulted`
+edges. The per-edge band is the volume range across the ensemble, so it is genuinely wider
+where the underlying data was weaker. Scope, stated like the height-only shadow band: the
+band reflects capacity and congestion-response uncertainty; route choice is assumed
+shortest-time and is not in the band; demand is exact because the user set it; flow is not
+validated against real counts (Part 4).
+
+### 6.4 Render and gate
+
+Flow is computed client-side for interactivity (the graph is small) and gated server-side
+by `scripts/verify-flow.ts`, which runs the real engine on the real network and the
+example demand and asserts trip conservation, flow conservation at nodes, demand
+satisfaction, band ordering, free-flow sanity, and determinism. The flow overlay recolors
+the streets by congestion (green to red on mid v/c) and fades links where the band is
+wide, so low-confidence links literally look uncertain, tying the rendering back to Part
+1's data-quality flag. A banded readout reports vehicle-km and congested links with ranges
+and the scope disclosure.
+
+### 6.5 Non-goals for Part 3
+
+No moving-vehicle animation and no validation against real counts (both Part 4). No full
+user-equilibrium solver. No turn delays, signals, or time-of-day dynamics. No demand
+prediction. Flow stays out of the geometry `Consequence` interface.
