@@ -67,7 +67,7 @@ refused, and the demand shown is named as a user-set scenario, not a prediction.
 
 ## 2. Build arc
 
-Four parts. Parts 1 to 3 are detailed here; Part 4 gets its own design notes.
+Four parts, all detailed here. The arc is complete.
 
 1. Network foundation (this part). A typed, provenance-stamped, gated, aligned, quietly
    rendered directed road graph in the city ENU frame. No vehicles, no demand, no flow,
@@ -81,10 +81,11 @@ Four parts. Parts 1 to 3 are detailed here; Part 4 gets its own design notes.
    relationship (travel time rises with volume over capacity), producing per-edge volumes
    and speeds with a confidence band from capacity uncertainty. Scenario-conditional, not
    yet validated against counts. Detailed in section 6.
-4. Validation and animation. Score simulated flow against real Toronto open-data counts
-   (the falsification anchor, the analogue of `known-heights.json` for routing), and
-   bring the live flow animation onto the network stage built in Part 1. Counts are a
-   factual readout; simulated flow is badged scenario-conditional.
+4. Validation and animation (this part now). Score simulated flow against real Toronto
+   open-data midblock counts via the GEH statistic (the falsification anchor, the analogue
+   of `known-heights.json` for routing), and bring the live flow animation onto the
+   network stage. Counts are a factual readout; the fit is reported honestly and is
+   scenario-conditional; the animation is illustrative. Detailed in section 7.
 
 ---
 
@@ -395,3 +396,52 @@ and the scope disclosure.
 No moving-vehicle animation and no validation against real counts (both Part 4). No full
 user-equilibrium solver. No turn delays, signals, or time-of-day dynamics. No demand
 prediction. Flow stays out of the geometry `Consequence` interface.
+
+---
+
+## 7. Part 4: validation against real counts, and live flow animation
+
+The finale and the credibility core: score the simulated flow against real measured
+Toronto counts (the falsification anchor), and bring the network stage alive with a flow
+animation.
+
+### 7.1 The honest boundary
+
+Counts are real measured open data, a factual readout, provenance-stamped. The fit between
+simulated flow and counts is reported honestly and is scenario-conditional: the cordon-only
+demand omits local trips and the static assignment is approximate, so the model
+under-predicts where local traffic dominates, and that is shown rather than hidden. The
+gate proves the validation harness is correct and reports the fit; it does not claim the
+model is validated-correct (flag A in `docs/architecture.md`). The animation is
+illustrative: particle density and speed reflect simulated volume and congested speed, not
+real vehicles or real positions.
+
+### 7.2 Counts and validation
+
+`scripts/fetch-counts.ts` pulls the City of Toronto "Traffic Volumes - Midblock Vehicle
+Speed, Volume and Classification Counts" dataset from the CKAN datastore API, filters to
+the catchment, and bakes `data/traffic-counts.json` (155 stations, each with a measured
+weekday peak-hour volume, location, speed, and count date; the count vintages span years
+and that is disclosed). `src/traffic/validation.ts` matches each station to the nearest
+network segment in ENU, compares the measured cross-section volume to the simulated one,
+and scores it with the GEH statistic (`sqrt(2(M-C)^2/(M+C))`, the transport standard).
+`scripts/verify-counts.ts` asserts the harness is correct (counts well-formed and in the
+bbox, GEH exact on a synthetic identity case, the matcher resolves a healthy fraction of
+stations) and reports the real-count fit under the example demand without asserting a
+threshold.
+
+### 7.3 Render
+
+A count overlay marks the stations as facts; when flow is on, each marker is colored by
+GEH agreement (green to red), so the screen shows where the simulation matches measured
+reality and where it does not. A validation readout gives the median GEH, the percent of
+stations within GEH 5 and 10, and a small scatter of simulated against measured, with the
+disclosure. The flow view gains moving particles (`FlowParticles`, one instanced mesh)
+that ride the directed edges, density by volume and speed by congested speed, making the
+tunnel alive.
+
+### 7.4 Non-goals for Part 4
+
+No OD calibration or demand estimation from counts (that would be predicting demand). No
+claim that the model is validated-correct. No per-vehicle simulation. Counts stay a factual
+readout, never a prediction.
