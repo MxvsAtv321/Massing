@@ -23,7 +23,10 @@ import { RoadNetwork } from "./RoadNetwork";
 import { NetworkReadout } from "./NetworkReadout";
 import { DemandLayer } from "./DemandLayer";
 import { DemandControls } from "./DemandControls";
+import { FlowOverlay } from "./FlowOverlay";
+import { FlowReadout } from "./FlowReadout";
 import { useDemandScenario } from "../traffic/useDemandScenario";
+import { useFlow } from "../traffic/useFlow";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
@@ -32,6 +35,7 @@ import type { ClusterProvenanceEntry } from "../honesty/confidence";
 import type { FooterSourcesSlice } from "../honesty/footer";
 import type { RoadEdgeForScene, NetworkStats } from "./roadGeometry";
 import type { Place } from "../traffic/demand";
+import type { RoutableNode, RoutableEdge } from "../traffic/routableGraph";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -258,7 +262,8 @@ export type SceneProps = {
   metresPerStorey: number;
   clusterProvenances: Record<string, ClusterProvenanceEntry>;
   sourcesFooter: FooterSourcesSlice;
-  roadEdges: RoadEdgeForScene[];
+  routableNodes: RoutableNode[];
+  routableEdges: RoutableEdge[];
   networkStats: NetworkStats;
   gateways: Place[];
 };
@@ -270,14 +275,34 @@ export function Scene({
   metresPerStorey,
   clusterProvenances,
   sourcesFooter,
-  roadEdges,
+  routableNodes,
+  routableEdges,
   networkStats,
   gateways,
 }: SceneProps) {
   const [tintByConfidence, setTintByConfidence] = useState(false);
   const [showRoads, setShowRoads] = useState(true);
   const [showDemand, setShowDemand] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const demand = useDemandScenario(gateways);
+
+  // Grey road centerlines: one per physical street, deduped from the directed edges.
+  const roadEdges = useMemo<RoadEdgeForScene[]>(() => {
+    const seen = new Set<string>();
+    const out: RoadEdgeForScene[] = [];
+    for (const e of routableEdges) {
+      const lo = e.from < e.to ? e.from : e.to;
+      const hi = e.from < e.to ? e.to : e.from;
+      const wayId = e.id.slice(0, e.id.indexOf(":"));
+      const key = `${wayId}:${lo}-${hi}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push({ polyline: e.geometry, roadClass: e.roadClass });
+    }
+    return out;
+  }, [routableEdges]);
+
+  const flow = useFlow(routableNodes, routableEdges, gateways, demand.flows, showFlow);
 
   // Ref to the WebGL canvas for PNG export.
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -361,6 +386,8 @@ export function Scene({
 
         <RoadNetwork edges={roadEdges} visible={showRoads} />
 
+        <FlowOverlay edges={routableEdges} flow={flow} visible={showFlow} />
+
         <DemandLayer
           places={gateways}
           flows={demand.flows}
@@ -417,6 +444,8 @@ export function Scene({
 
       <NetworkReadout stats={networkStats} />
 
+      {showFlow && flow && <FlowReadout flow={flow} />}
+
       {/* Bottom-right: data-quality toggle + legend + export */}
       <div style={styles.bottomRight}>
         {tintByConfidence && (
@@ -441,6 +470,12 @@ export function Scene({
             style={{ ...styles.ctrlBtn, ...(showDemand ? styles.ctrlBtnActive : {}) }}
           >
             {showDemand ? "● Demand" : "○ Demand"}
+          </button>
+          <button
+            onClick={() => setShowFlow((f) => !f)}
+            style={{ ...styles.ctrlBtn, ...(showFlow ? styles.ctrlBtnActive : {}) }}
+          >
+            {showFlow ? "● Flow" : "○ Flow"}
           </button>
           <button
             onClick={() => setTintByConfidence((t) => !t)}

@@ -3,10 +3,11 @@ import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
 import { loadRoadNetwork } from "../src/network/build";
 import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
+import { toRoutableNodes, toRoutableEdges, type RoutableNode, type RoutableEdge } from "../src/traffic/routableGraph";
 import { Scene } from "../src/scene/Scene";
 import { buildClusterProvenances } from "../src/honesty/confidence";
 import type { BuildingForScene } from "../src/scene/buildings";
-import type { RoadEdgeForScene, NetworkStats } from "../src/scene/roadGeometry";
+import type { NetworkStats } from "../src/scene/roadGeometry";
 import type { Place } from "../src/traffic/demand";
 import type { FooterSourcesSlice } from "../src/honesty/footer";
 
@@ -32,17 +33,11 @@ export default async function Page() {
       b.height.confidence.kind === "measured" ? "measured" : "estimated",
   }));
 
-  // Slim road payload: one centerline per physical street (directed pairs deduped).
-  const seenSeg = new Set<string>();
-  const roadEdges: RoadEdgeForScene[] = [];
-  for (const e of roadNetwork.edges) {
-    const lo = e.from < e.to ? e.from : e.to;
-    const hi = e.from < e.to ? e.to : e.from;
-    const key = `${e.osmWayId}:${lo}-${hi}`;
-    if (seenSeg.has(key)) continue;
-    seenSeg.add(key);
-    roadEdges.push({ polyline: e.geometry, roadClass: e.roadClass });
-  }
+  // Slim routable payload: directed edges (with geometry + capacity attributes) and nodes.
+  // The scene derives the grey road centerlines from these and runs the flow assignment
+  // on them, so the graph is sent once.
+  const routableNodes: RoutableNode[] = toRoutableNodes(roadNetwork);
+  const routableEdges: RoutableEdge[] = toRoutableEdges(roadNetwork);
 
   const networkStats: NetworkStats = {
     graphNodes: roadNetwork.coverage.graphNodes,
@@ -79,7 +74,8 @@ export default async function Page() {
       metresPerStorey={model.sources.metresPerStorey}
       clusterProvenances={clusterProvenances}
       sourcesFooter={sourcesFooter}
-      roadEdges={roadEdges}
+      routableNodes={routableNodes}
+      routableEdges={routableEdges}
       networkStats={networkStats}
       gateways={gateways}
     />
