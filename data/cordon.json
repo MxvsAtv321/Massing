@@ -1,0 +1,20 @@
+{
+  "_note": "Cordon gateways: major arterial crossings of the catchment boundary, the entry/exit points for through-traffic demand. Hand-authored from the real network (arterial strongly-connected nodes nearest each boundary edge), the same pattern as known-routes.json. Resolved to the nearest strongly-connected node at load via src/traffic/cordon.ts. Demand between gateways is a user assumption, never predicted (ADR-006, ADR-008).",
+  "maxResolveMetres": 120,
+  "gateways": [
+    { "id": "gw-king-e", "label": "King St E", "side": "E", "lonlat": [-79.36439, 43.65214] },
+    { "id": "gw-front-e", "label": "Front St E", "side": "E", "lonlat": [-79.36590, 43.65085] },
+    { "id": "gw-adelaide-e", "label": "Adelaide St E", "side": "E", "lonlat": [-79.36475, 43.65299] },
+    { "id": "gw-richmond-e", "label": "Richmond St E", "side": "E", "lonlat": [-79.36530, 43.65425] },
+    { "id": "gw-king-w", "label": "King St W", "side": "W", "lonlat": [-79.38481, 43.64766] },
+    { "id": "gw-front-w", "label": "Front St W", "side": "W", "lonlat": [-79.38471, 43.64483] },
+    { "id": "gw-richmond-w", "label": "Richmond St W", "side": "W", "lonlat": [-79.38460, 43.65045] },
+    { "id": "gw-queen-w", "label": "Queen St W", "side": "W", "lonlat": [-79.38491, 43.65121] },
+    { "id": "gw-yonge-n", "label": "Yonge St", "side": "N", "lonlat": [-79.37996, 43.65407] },
+    { "id": "gw-jarvis-n", "label": "Jarvis St", "side": "N", "lonlat": [-79.37324, 43.65371] },
+    { "id": "gw-sherbourne-n", "label": "Sherbourne St", "side": "N", "lonlat": [-79.36934, 43.65415] },
+    { "id": "gw-bay-n", "label": "Bay St", "side": "N", "lonlat": [-79.38304, 43.65403] },
+    { "id": "gw-queensquay-s", "label": "Queens Quay W", "side": "S", "lonlat": [-79.38087, 43.63990] },
+    { "id": "gw-lowersimcoe-s", "label": "Lower Simcoe St", "side": "S", "lonlat": [-79.38303, 43.64007] }
+  ]
+}
