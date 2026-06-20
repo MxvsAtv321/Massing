@@ -24,6 +24,7 @@ import { NetworkReadout } from "./NetworkReadout";
 import { DemandLayer } from "./DemandLayer";
 import { DemandControls } from "./DemandControls";
 import { FlowOverlay } from "./FlowOverlay";
+import { FlowParticles } from "./FlowParticles";
 import { FlowReadout } from "./FlowReadout";
 import { CountLayer } from "./CountLayer";
 import { ValidationReadout, type CountsProvenanceSlice } from "./ValidationReadout";
@@ -410,6 +411,8 @@ export function Scene({
         <RoadNetwork edges={roadEdges} visible={showRoads} />
 
         <FlowOverlay edges={routableEdges} flow={flow} visible={showFlow} />
+
+        <FlowParticles edges={routableEdges} flow={flow} visible={showFlow} />
 
         <CountLayer stations={countStations} fitById={fitById} visible={showCounts} />
 
