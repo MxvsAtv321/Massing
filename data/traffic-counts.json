@@ -1,0 +1,2022 @@
+{
+  "provenance": {
+    "source": "City of Toronto Open Data",
+    "dataset": "Traffic Volumes - Midblock Vehicle Speed, Volume and Classification Counts",
+    "resourceId": "e90038e7-ccb9-4bd2-af3e-696adc904c18",
+    "datasetUrl": "https://open.toronto.ca/dataset/traffic-volumes-midblock-vehicle-speed-volume-and-classification-counts/",
+    "license": "Open Government Licence - Toronto",
+    "api": "CKAN datastore_search",
+    "retrievedDate": "2026-06-20",
+    "bbox": {
+      "south": 43.64,
+      "west": -79.385,
+      "north": 43.654,
+      "east": -79.365
+    },
+    "note": "Measured weekday peak-hour midblock volumes (avg_wkdy_pm_peak_vol, both directions), the most recent count per location. Count dates span multiple years; each station carries its own countDate."
+  },
+  "stations": [
+    {
+      "id": "3012244",
+      "name": "Lower Jarvis St: Lakeshore W / Gardiner - Wilton St",
+      "lonlat": [
+        -79.370485,
+        43.647135000000006
+      ],
+      "pmPeakVol": 1338,
+      "amPeakVol": 1540,
+      "avgSpeedKph": 30,
+      "countDate": "2025-04-29",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "3011622",
+      "name": "Conger Coal Lane",
+      "lonlat": [
+        -79.37213708931962,
+        43.64679176799214
+      ],
+      "pmPeakVol": 83,
+      "amPeakVol": 66,
+      "avgSpeedKph": 21.7,
+      "countDate": "2024-12-10",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "3009628",
+      "name": "Lombard St: Victoria St - Spice Mill Lane",
+      "lonlat": [
+        -79.37683000000001,
+        43.651455
+      ],
+      "pmPeakVol": 119,
+      "amPeakVol": 107,
+      "avgSpeedKph": 23.1,
+      "countDate": "2024-05-07",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "3009080",
+      "name": "Taylor's Wharf Lane (id: 30012810)",
+      "lonlat": [
+        -79.369225,
+        43.64967
+      ],
+      "pmPeakVol": 21,
+      "amPeakVol": 14,
+      "avgSpeedKph": 12.7,
+      "countDate": "2024-04-02",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2877468",
+      "name": "Frederick St to Taylor's Wharf Lane",
+      "lonlat": [
+        -79.36876000000001,
+        43.649420000000006
+      ],
+      "pmPeakVol": 136,
+      "amPeakVol": 96,
+      "avgSpeedKph": 27,
+      "countDate": "2023-05-02",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2871410",
+      "name": "Lakeshore W / Gardiner (id: 13975066)",
+      "lonlat": [
+        -79.3821629053305,
+        43.64120243337029
+      ],
+      "pmPeakVol": 2427,
+      "amPeakVol": 2120,
+      "avgSpeedKph": null,
+      "countDate": "2022-08-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2871368",
+      "name": "Gardiner E / Lower Jarvis Ramp (id: 12341011)",
+      "lonlat": [
+        -79.37044,
+        43.645475000000005
+      ],
+      "pmPeakVol": 2296,
+      "amPeakVol": 1730,
+      "avgSpeedKph": null,
+      "countDate": "2022-08-09",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2865208",
+      "name": "The Esplanade to David Crombie Park Trl (id: 60069886)",
+      "lonlat": [
+        -79.36520000000002,
+        43.649530000000006
+      ],
+      "pmPeakVol": 75,
+      "amPeakVol": 78,
+      "avgSpeedKph": 25.5,
+      "countDate": "2022-04-12",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2856740",
+      "name": "Yonge St: King St W - Adelaide St W",
+      "lonlat": [
+        -79.378175,
+        43.64978500000001
+      ],
+      "pmPeakVol": 320,
+      "amPeakVol": 311,
+      "avgSpeedKph": 34.1,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2858440",
+      "name": "Bay St: Bay St N / Gardiner Expy Ramp - Lake Shore Blvd W",
+      "lonlat": [
+        -79.37774,
+        43.642785
+      ],
+      "pmPeakVol": 620,
+      "amPeakVol": 418,
+      "avgSpeedKph": 33.7,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2862636",
+      "name": "Sherbourne St: King St E - Adelaide St E",
+      "lonlat": [
+        -79.36842,
+        43.651715
+      ],
+      "pmPeakVol": 317,
+      "amPeakVol": 300,
+      "avgSpeedKph": null,
+      "countDate": "2021-09-27",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2856964",
+      "name": "Jarvis St: King St E - St. James Park Trl",
+      "lonlat": [
+        -79.37200000000001,
+        43.65072000000001
+      ],
+      "pmPeakVol": 518,
+      "amPeakVol": 466,
+      "avgSpeedKph": 32.3,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2858430",
+      "name": "Lower Jarvis St: Queens Quay E - Lower Jarvis Gardiner Ramp",
+      "lonlat": [
+        -79.3694650270957,
+        43.644711729889956
+      ],
+      "pmPeakVol": 661,
+      "amPeakVol": 511,
+      "avgSpeedKph": 36.9,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2856944",
+      "name": "Bay St: King St W - Lane S of Adelaide and E of Bay",
+      "lonlat": [
+        -79.38045500000001,
+        43.649085
+      ],
+      "pmPeakVol": 768,
+      "amPeakVol": 684,
+      "avgSpeedKph": 33.8,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2856934",
+      "name": "Bay St: Lane S of Adelaide and E of Bay - Adelaide St W",
+      "lonlat": [
+        -79.38073,
+        43.649705000000004
+      ],
+      "pmPeakVol": 403,
+      "amPeakVol": 521,
+      "avgSpeedKph": 34,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2856914",
+      "name": "University Ave: King St W - Pearl St",
+      "lonlat": [
+        -79.384985,
+        43.647965
+      ],
+      "pmPeakVol": 872,
+      "amPeakVol": 835,
+      "avgSpeedKph": 34.1,
+      "countDate": "2021-09-27",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2860282",
+      "name": "Lower Sherbourne St to Lake Shore Blvd E (id: 30087997)",
+      "lonlat": [
+        -79.36591694480543,
+        43.64595927151018
+      ],
+      "pmPeakVol": 116,
+      "amPeakVol": 73,
+      "avgSpeedKph": null,
+      "countDate": "2021-09-27",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2852626",
+      "name": "Yonge St: Queen St W - Shuter St",
+      "lonlat": [
+        -79.379615,
+        43.65325
+      ],
+      "pmPeakVol": 495,
+      "amPeakVol": 465,
+      "avgSpeedKph": 33.9,
+      "countDate": "2021-06-15",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2851109",
+      "name": "Lower Sherbourne St: The Esplanade - Sherbourne St",
+      "lonlat": [
+        -79.367595,
+        43.64972
+      ],
+      "pmPeakVol": 418,
+      "amPeakVol": 361,
+      "avgSpeedKph": 35.3,
+      "countDate": "2021-05-04",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2851133",
+      "name": "Lower Jarvis St: Wilton St - The Esplanade",
+      "lonlat": [
+        -79.370845,
+        43.64802
+      ],
+      "pmPeakVol": 126,
+      "amPeakVol": 65,
+      "avgSpeedKph": 34.2,
+      "countDate": "2021-05-04",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2851091",
+      "name": "Lower Sherbourne St to Lake Shore Blvd E (id: 1146072)",
+      "lonlat": [
+        -79.36609000000001,
+        43.646350000000005
+      ],
+      "pmPeakVol": 219,
+      "amPeakVol": 94,
+      "avgSpeedKph": 43.7,
+      "countDate": "2021-05-04",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2851085",
+      "name": "Lower Sherbourne St: Gardiner W / Sherbourne Ramp - The Esplanade",
+      "lonlat": [
+        -79.367215,
+        43.64886
+      ],
+      "pmPeakVol": 309,
+      "amPeakVol": 308,
+      "avgSpeedKph": 41.2,
+      "countDate": "2021-05-04",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2851197",
+      "name": "Lower Jarvis St: The Esplanade - Jarvis St",
+      "lonlat": [
+        -79.37117,
+        43.64882
+      ],
+      "pmPeakVol": 552,
+      "amPeakVol": 409,
+      "avgSpeedKph": 37.5,
+      "countDate": "2021-05-04",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2849459",
+      "name": "Queen St E: Jarvis St - George St",
+      "lonlat": [
+        -79.372635,
+        43.653845000000004
+      ],
+      "pmPeakVol": 243,
+      "amPeakVol": 345,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-24",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2854582",
+      "name": "Church St: Ditty Lane - Queen St E",
+      "lonlat": [
+        -79.375675,
+        43.652985
+      ],
+      "pmPeakVol": 281,
+      "amPeakVol": 257,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-11",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2854568",
+      "name": "Queen St W to Bay St",
+      "lonlat": [
+        -79.38209,
+        43.65181
+      ],
+      "pmPeakVol": 377,
+      "amPeakVol": 267,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-11",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2847564",
+      "name": "Jarvis St: Jarvis St Richmond St E Ramp - Queen St E",
+      "lonlat": [
+        -79.373085,
+        43.653375000000004
+      ],
+      "pmPeakVol": 293,
+      "amPeakVol": 284,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-09",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2847592",
+      "name": "Yonge St: Richmond St W - Queen St W",
+      "lonlat": [
+        -79.37911,
+        43.65207000000001
+      ],
+      "pmPeakVol": 216,
+      "amPeakVol": 190,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-09",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2847620",
+      "name": "Bay St: Richmond St W - Queen St W",
+      "lonlat": [
+        -79.38148887125573,
+        43.65155273529787
+      ],
+      "pmPeakVol": 320,
+      "amPeakVol": 302,
+      "avgSpeedKph": null,
+      "countDate": "2021-03-09",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2834677",
+      "name": "Scott St: Wellington St E - Victoria St",
+      "lonlat": [
+        -79.37620762254889,
+        43.648471231617386
+      ],
+      "pmPeakVol": 36,
+      "amPeakVol": 29,
+      "avgSpeedKph": null,
+      "countDate": "2020-09-29",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2833434",
+      "name": "Princess St: Duke Mews - Adelaide St E",
+      "lonlat": [
+        -79.36729500000001,
+        43.65218
+      ],
+      "pmPeakVol": 61,
+      "amPeakVol": 41,
+      "avgSpeedKph": 24.9,
+      "countDate": "2020-08-25",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2840181",
+      "name": "George St S: Albert Franck Pl - Wilton St",
+      "lonlat": [
+        -79.36950000000002,
+        43.647940000000006
+      ],
+      "pmPeakVol": 84,
+      "amPeakVol": 67,
+      "avgSpeedKph": 22.9,
+      "countDate": "2020-03-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2844336",
+      "name": "The Esplanade: Scott St - Church St",
+      "lonlat": [
+        -79.37427000000001,
+        43.64679
+      ],
+      "pmPeakVol": 333,
+      "amPeakVol": 105,
+      "avgSpeedKph": null,
+      "countDate": "2020-02-18",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2844392",
+      "name": "The Esplanade: Lower Jarvis St - George St S",
+      "lonlat": [
+        -79.37032500000001,
+        43.64835000000001
+      ],
+      "pmPeakVol": 415,
+      "amPeakVol": 98,
+      "avgSpeedKph": null,
+      "countDate": "2020-02-18",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "2684587",
+      "name": "Bay St: Wellington St W - King St W",
+      "lonlat": [
+        -79.379985,
+        43.64799000000001
+      ],
+      "pmPeakVol": 1074,
+      "amPeakVol": 1094,
+      "avgSpeedKph": null,
+      "countDate": "2019-10-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2671716",
+      "name": "University Ave: Wellington St W - King St W",
+      "lonlat": [
+        -79.384455,
+        43.64702
+      ],
+      "pmPeakVol": 767,
+      "amPeakVol": 777,
+      "avgSpeedKph": null,
+      "countDate": "2019-09-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2140803",
+      "name": "George St: Front St E - King St E",
+      "lonlat": [
+        -79.37050500000001,
+        43.65027500000001
+      ],
+      "pmPeakVol": 349,
+      "amPeakVol": 201,
+      "avgSpeedKph": 23,
+      "countDate": "2018-12-11",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2083664",
+      "name": "Frederick St: King St E - Adelaide St E",
+      "lonlat": [
+        -79.36966500000001,
+        43.651445
+      ],
+      "pmPeakVol": 74,
+      "amPeakVol": 62,
+      "avgSpeedKph": 24.6,
+      "countDate": "2018-06-14",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2083636",
+      "name": "George St: King St E - Adelaide St E",
+      "lonlat": [
+        -79.37087500000001,
+        43.65117000000001
+      ],
+      "pmPeakVol": 221,
+      "amPeakVol": 173,
+      "avgSpeedKph": 27.8,
+      "countDate": "2018-06-14",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2083748",
+      "name": "The Esplanade: Yonge St - Scott St",
+      "lonlat": [
+        -79.37588000000001,
+        43.64605
+      ],
+      "pmPeakVol": 265,
+      "amPeakVol": 247,
+      "avgSpeedKph": 22.2,
+      "countDate": "2018-06-13",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044354",
+      "name": "Adelaide St E: Frederick St - Sherbourne St",
+      "lonlat": [
+        -79.36923,
+        43.652025
+      ],
+      "pmPeakVol": 538,
+      "amPeakVol": 467,
+      "avgSpeedKph": 37.1,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044660",
+      "name": "Sherbourne St: Adelaide St E - Richmond St E",
+      "lonlat": [
+        -79.36886000000001,
+        43.652770000000004
+      ],
+      "pmPeakVol": 493,
+      "amPeakVol": 462,
+      "avgSpeedKph": 30.6,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044336",
+      "name": "Adelaide St E: Princess St - Ontario St",
+      "lonlat": [
+        -79.36691,
+        43.65251500000001
+      ],
+      "pmPeakVol": 885,
+      "amPeakVol": 679,
+      "avgSpeedKph": 41.6,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044330",
+      "name": "Adelaide St E: Jarvis St Adelaide St E Ramp - George St",
+      "lonlat": [
+        -79.371375,
+        43.651535
+      ],
+      "pmPeakVol": 448,
+      "amPeakVol": 431,
+      "avgSpeedKph": 33.6,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044318",
+      "name": "Adelaide St E: Church St - St. James Park Trl",
+      "lonlat": [
+        -79.37437500000001,
+        43.65130500000001
+      ],
+      "pmPeakVol": 419,
+      "amPeakVol": 598,
+      "avgSpeedKph": 37,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044312",
+      "name": "Adelaide St E: Sherbourne St - Princess St",
+      "lonlat": [
+        -79.36799500000001,
+        43.652285000000006
+      ],
+      "pmPeakVol": 707,
+      "amPeakVol": 544,
+      "avgSpeedKph": 40.5,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044306",
+      "name": "Adelaide St E: George St - Frederick St",
+      "lonlat": [
+        -79.37046000000001,
+        43.65175000000001
+      ],
+      "pmPeakVol": 607,
+      "amPeakVol": 513,
+      "avgSpeedKph": 37.5,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044576",
+      "name": "Jarvis St: Adelaide St E - Lombard St",
+      "lonlat": [
+        -79.372515,
+        43.65195
+      ],
+      "pmPeakVol": 425,
+      "amPeakVol": 414,
+      "avgSpeedKph": 30.1,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044570",
+      "name": "Jarvis St: Lombard St - Richmond St E",
+      "lonlat": [
+        -79.37275500000001,
+        43.652530000000006
+      ],
+      "pmPeakVol": 402,
+      "amPeakVol": 358,
+      "avgSpeedKph": 30.8,
+      "countDate": "2017-10-03",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2044636",
+      "name": "Princess St: King St E - Duke Mews",
+      "lonlat": [
+        -79.36711500000001,
+        43.651745000000005
+      ],
+      "pmPeakVol": 51,
+      "amPeakVol": 55,
+      "avgSpeedKph": 19,
+      "countDate": "2017-09-29",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2000828",
+      "name": "Lane S of Adelaide and E of Bay",
+      "lonlat": [
+        -79.38021630440663,
+        43.64961452339856
+      ],
+      "pmPeakVol": 8,
+      "amPeakVol": 4,
+      "avgSpeedKph": 13.5,
+      "countDate": "2017-06-13",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "1969886",
+      "name": "Cooper St: Downes St - Lake Shore Blvd E",
+      "lonlat": [
+        -79.37211500000001,
+        43.644495000000006
+      ],
+      "pmPeakVol": 96,
+      "amPeakVol": 58,
+      "avgSpeedKph": 35.5,
+      "countDate": "2017-05-16",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "1958098",
+      "name": "George St: Adelaide St E - Richmond St E",
+      "lonlat": [
+        -79.37131500000001,
+        43.65222
+      ],
+      "pmPeakVol": 257,
+      "amPeakVol": 239,
+      "avgSpeedKph": 26.3,
+      "countDate": "2017-04-25",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "2063626",
+      "name": "King St E: Church St - St. James Park Trl",
+      "lonlat": [
+        -79.37393,
+        43.650015
+      ],
+      "pmPeakVol": 474,
+      "amPeakVol": 531,
+      "avgSpeedKph": null,
+      "countDate": "2015-11-06",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2063612",
+      "name": "King St E: St. James Park Trl - Jarvis St",
+      "lonlat": [
+        -79.37210000000002,
+        43.65041000000001
+      ],
+      "pmPeakVol": 549,
+      "amPeakVol": 325,
+      "avgSpeedKph": null,
+      "countDate": "2015-11-06",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1701099",
+      "name": "Queen St E: Bond St - Berti St",
+      "lonlat": [
+        -79.37681,
+        43.652950000000004
+      ],
+      "pmPeakVol": 1035,
+      "amPeakVol": 954,
+      "avgSpeedKph": null,
+      "countDate": "2015-11-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1701113",
+      "name": "Queen St E: Berti St - Church St",
+      "lonlat": [
+        -79.37621000000001,
+        43.653075
+      ],
+      "pmPeakVol": 1169,
+      "amPeakVol": 1200,
+      "avgSpeedKph": null,
+      "countDate": "2015-11-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1674505",
+      "name": "Wellington St E: Yonge St - Scott St",
+      "lonlat": [
+        -79.37669,
+        43.647980000000004
+      ],
+      "pmPeakVol": 665,
+      "amPeakVol": 1012,
+      "avgSpeedKph": null,
+      "countDate": "2015-05-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1674519",
+      "name": "Wellington St W: Bay St - York St",
+      "lonlat": [
+        -79.38137,
+        43.64697
+      ],
+      "pmPeakVol": 1138,
+      "amPeakVol": 1006,
+      "avgSpeedKph": null,
+      "countDate": "2015-05-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1660240",
+      "name": "University Ave: Lane S of Wellington and W of University - Wellington St W",
+      "lonlat": [
+        -79.3840999206154,
+        43.6463837077363
+      ],
+      "pmPeakVol": 1352,
+      "amPeakVol": 1243,
+      "avgSpeedKph": null,
+      "countDate": "2015-05-07",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1660184",
+      "name": "Front St W: York St - University Ave",
+      "lonlat": [
+        -79.38295031042965,
+        43.645186597682304
+      ],
+      "pmPeakVol": 1203,
+      "amPeakVol": 1141,
+      "avgSpeedKph": null,
+      "countDate": "2015-05-07",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1660198",
+      "name": "Front St W: University Ave - Lane W of University and N of Front",
+      "lonlat": [
+        -79.38371000000001,
+        43.645025000000004
+      ],
+      "pmPeakVol": 1094,
+      "amPeakVol": 1033,
+      "avgSpeedKph": null,
+      "countDate": "2015-05-07",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1629041",
+      "name": "Yonge St: Melinda St - King St W",
+      "lonlat": [
+        -79.37778,
+        43.64885
+      ],
+      "pmPeakVol": 769,
+      "amPeakVol": 806,
+      "avgSpeedKph": null,
+      "countDate": "2014-09-27",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605311",
+      "name": "Harbour St to York St",
+      "lonlat": [
+        -79.38134500000001,
+        43.640855
+      ],
+      "pmPeakVol": 1884,
+      "amPeakVol": 2292,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544031",
+      "name": "Yonge St: Front St W - Wellington St W",
+      "lonlat": [
+        -79.377155,
+        43.647355000000005
+      ],
+      "pmPeakVol": 1756,
+      "amPeakVol": 1771,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544025",
+      "name": "Yonge St: The Esplanade - Front St W",
+      "lonlat": [
+        -79.376735,
+        43.64633
+      ],
+      "pmPeakVol": 1188,
+      "amPeakVol": 1476,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544019",
+      "name": "Yonge St: Lake Shore Blvd W - Gardiner W / Yonge N Ramp",
+      "lonlat": [
+        -79.37579,
+        43.644110000000005
+      ],
+      "pmPeakVol": 728,
+      "amPeakVol": 431,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544013",
+      "name": "Yonge St: Lake Shore Blvd E - Lake Shore Blvd W",
+      "lonlat": [
+        -79.37576000000001,
+        43.644040000000004
+      ],
+      "pmPeakVol": 987,
+      "amPeakVol": 1387,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544001",
+      "name": "Yonge St: Downes St - Lake Shore Blvd E",
+      "lonlat": [
+        -79.37538,
+        43.643125000000005
+      ],
+      "pmPeakVol": 333,
+      "amPeakVol": 255,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1543995",
+      "name": "Yonge St: Queens Quay W - Harbour St",
+      "lonlat": [
+        -79.37493500000001,
+        43.64235000000001
+      ],
+      "pmPeakVol": 479,
+      "amPeakVol": 405,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544073",
+      "name": "Yonge St: Temperance St - Richmond St W",
+      "lonlat": [
+        -79.378825,
+        43.65137
+      ],
+      "pmPeakVol": 699,
+      "amPeakVol": 650,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544067",
+      "name": "Yonge St: Adelaide St W - Temperance St",
+      "lonlat": [
+        -79.37856000000001,
+        43.65073
+      ],
+      "pmPeakVol": 702,
+      "amPeakVol": 618,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1544043",
+      "name": "Yonge St: Wellington St W - Colborne St",
+      "lonlat": [
+        -79.37748500000001,
+        43.64817
+      ],
+      "pmPeakVol": 1087,
+      "amPeakVol": 870,
+      "avgSpeedKph": null,
+      "countDate": "2012-10-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605631",
+      "name": "York St: Queens Quay W - Harbour St",
+      "lonlat": [
+        -79.38042091962939,
+        43.64041131375627
+      ],
+      "pmPeakVol": 522,
+      "amPeakVol": 673,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605649",
+      "name": "York St: Harbour St - Lakeshore E / Gardiner Ramp",
+      "lonlat": [
+        -79.3808915999027,
+        43.6415198588835
+      ],
+      "pmPeakVol": 585,
+      "amPeakVol": 494,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605661",
+      "name": "York St: Bremner Blvd - Station St",
+      "lonlat": [
+        -79.381665,
+        43.64336
+      ],
+      "pmPeakVol": 1166,
+      "amPeakVol": 1067,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605667",
+      "name": "York St: Lakeshore W / York St Ramp - Bremner Blvd",
+      "lonlat": [
+        -79.38124,
+        43.64235
+      ],
+      "pmPeakVol": 895,
+      "amPeakVol": 1361,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605673",
+      "name": "York St: Heenan Pl - Wellington St W",
+      "lonlat": [
+        -79.38290483878231,
+        43.64634716144283
+      ],
+      "pmPeakVol": 596,
+      "amPeakVol": 1139,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605679",
+      "name": "York St: Station St - University Ave",
+      "lonlat": [
+        -79.38237000000001,
+        43.645055
+      ],
+      "pmPeakVol": 1017,
+      "amPeakVol": 1483,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1542527",
+      "name": "University Ave to York St",
+      "lonlat": [
+        -79.38308541478936,
+        43.645466284565785
+      ],
+      "pmPeakVol": 993,
+      "amPeakVol": 672,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1554796",
+      "name": "Jarvis St: Lower Jarvis St - King St E",
+      "lonlat": [
+        -79.37166,
+        43.649950000000004
+      ],
+      "pmPeakVol": 1720,
+      "amPeakVol": 1704,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1543079",
+      "name": "University Ave to Front St W",
+      "lonlat": [
+        -79.383555,
+        43.64539
+      ],
+      "pmPeakVol": 15,
+      "amPeakVol": 34,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1538164",
+      "name": "Church St: The Esplanade - Front St E",
+      "lonlat": [
+        -79.37353827507407,
+        43.64784862691299
+      ],
+      "pmPeakVol": 559,
+      "amPeakVol": 549,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-04",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1538158",
+      "name": "Church St: Oak Hall Lane - King St E",
+      "lonlat": [
+        -79.374335,
+        43.649730000000005
+      ],
+      "pmPeakVol": 494,
+      "amPeakVol": 453,
+      "avgSpeedKph": null,
+      "countDate": "2012-09-04",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1457531",
+      "name": "Lake Shore Blvd W: Bremner Blvd - Lakeshore W / York St Ramp",
+      "lonlat": [
+        -79.3793337848326,
+        43.6422425567049
+      ],
+      "pmPeakVol": 182,
+      "amPeakVol": 456,
+      "avgSpeedKph": null,
+      "countDate": "2012-05-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1537960",
+      "name": "Sherbourne St: Lower Sherbourne St - Abbey Lane",
+      "lonlat": [
+        -79.36798,
+        43.65061
+      ],
+      "pmPeakVol": 476,
+      "amPeakVol": 382,
+      "avgSpeedKph": null,
+      "countDate": "2012-05-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1537954",
+      "name": "Sherbourne St: Abbey Lane - King St E",
+      "lonlat": [
+        -79.368155,
+        43.651050000000005
+      ],
+      "pmPeakVol": 419,
+      "amPeakVol": 457,
+      "avgSpeedKph": null,
+      "countDate": "2012-05-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1537924",
+      "name": "Sherbourne St: Richmond St E - Britain St",
+      "lonlat": [
+        -79.36918500000002,
+        43.65363000000001
+      ],
+      "pmPeakVol": 435,
+      "amPeakVol": 404,
+      "avgSpeedKph": null,
+      "countDate": "2012-05-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1638012",
+      "name": "Harbour St to Bay St",
+      "lonlat": [
+        -79.3766956069603,
+        43.64233705201444
+      ],
+      "pmPeakVol": 1360,
+      "amPeakVol": 1409,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1638026",
+      "name": "Lake Shore Blvd E: Cooper St - John M Tinsley St",
+      "lonlat": [
+        -79.37169,
+        43.645115000000004
+      ],
+      "pmPeakVol": 887,
+      "amPeakVol": 763,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1604855",
+      "name": "Lake Shore Blvd E: Lakeshore W / Gardiner - Lower Sherbourne St",
+      "lonlat": [
+        -79.36739487893564,
+        43.646164444252065
+      ],
+      "pmPeakVol": 900,
+      "amPeakVol": 958,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605305",
+      "name": "Lake Shore Blvd W: Yonge St - Bay St",
+      "lonlat": [
+        -79.37679607817341,
+        43.64353709225129
+      ],
+      "pmPeakVol": 1923,
+      "amPeakVol": 2004,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1627700",
+      "name": "Lake Shore Blvd E: Richardson St - Lower Sherbourne St",
+      "lonlat": [
+        -79.367335,
+        43.646045
+      ],
+      "pmPeakVol": 900,
+      "amPeakVol": 849,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1638020",
+      "name": "Lakeshore W / Gardiner (id: 12336185)",
+      "lonlat": [
+        -79.37150796987287,
+        43.64560289499308
+      ],
+      "pmPeakVol": 1371,
+      "amPeakVol": 1286,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1627646",
+      "name": "Harbour St: Bay St - York St",
+      "lonlat": [
+        -79.37907536650638,
+        43.64154347726233
+      ],
+      "pmPeakVol": 1634,
+      "amPeakVol": 1614,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1627650",
+      "name": "Lakeshore E / Gardiner Ramp (id: 12335239)",
+      "lonlat": [
+        -79.38432688940833,
+        43.640031770475275
+      ],
+      "pmPeakVol": 729,
+      "amPeakVol": 1269,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-12",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1638004",
+      "name": "Lake Shore Blvd E: Lower Sherbourne St - Bonnycastle St (id: 20102845)",
+      "lonlat": [
+        -79.36555000000001,
+        43.646570000000004
+      ],
+      "pmPeakVol": 782,
+      "amPeakVol": 844,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-10",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1615956",
+      "name": "Lake Shore Blvd W: Harbour St - Lower Simcoe St (id: 1146834)",
+      "lonlat": [
+        -79.383215,
+        43.64054
+      ],
+      "pmPeakVol": 1517,
+      "amPeakVol": 536,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-10",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1604765",
+      "name": "Lake Shore Blvd E: Lakeshore W / Gardiner - Yonge St",
+      "lonlat": [
+        -79.374955858952,
+        43.644438724130666
+      ],
+      "pmPeakVol": 1304,
+      "amPeakVol": 1847,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-10",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1605313",
+      "name": "Lake Shore Blvd W: Lakeshore W / York St Ramp - Lakeshore E / Gardiner Ramp",
+      "lonlat": [
+        -79.380245,
+        43.64181000000001
+      ],
+      "pmPeakVol": 2369,
+      "amPeakVol": 1642,
+      "avgSpeedKph": null,
+      "countDate": "2011-05-10",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395597",
+      "name": "Bay St N / Gardiner Expy Ramp",
+      "lonlat": [
+        -79.37764463887356,
+        43.642831444505774
+      ],
+      "pmPeakVol": 506,
+      "amPeakVol": 162,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-13",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395485",
+      "name": "Bay St: Albert St - Hagerman St",
+      "lonlat": [
+        -79.38292000000001,
+        43.653645000000004
+      ],
+      "pmPeakVol": 1945,
+      "amPeakVol": 1873,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395497",
+      "name": "Bay St to Albert St",
+      "lonlat": [
+        -79.38249000000002,
+        43.65260000000001
+      ],
+      "pmPeakVol": 1861,
+      "amPeakVol": 1811,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395521",
+      "name": "Bay St: Temperance St - Richmond St W",
+      "lonlat": [
+        -79.3812,
+        43.65087
+      ],
+      "pmPeakVol": 951,
+      "amPeakVol": 979,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395539",
+      "name": "Bay St: Adelaide St W - Temperance St",
+      "lonlat": [
+        -79.38094000000001,
+        43.65023000000001
+      ],
+      "pmPeakVol": 956,
+      "amPeakVol": 738,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395557",
+      "name": "Bay St: Front St W - Wellington St W",
+      "lonlat": [
+        -79.37942000000001,
+        43.646660000000004
+      ],
+      "pmPeakVol": 1772,
+      "amPeakVol": 1946,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395587",
+      "name": "Bay St: Lake Shore Blvd W - Front St W",
+      "lonlat": [
+        -79.37784500000001,
+        43.643060000000006
+      ],
+      "pmPeakVol": 1105,
+      "amPeakVol": 619,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395599",
+      "name": "Bay St: Queens Quay W - Harbour St",
+      "lonlat": [
+        -79.37715000000001,
+        43.64161500000001
+      ],
+      "pmPeakVol": 733,
+      "amPeakVol": 761,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1395605",
+      "name": "Bay St: Harbour St - Bay St N / Gardiner Expy Ramp",
+      "lonlat": [
+        -79.37758292846156,
+        43.642361730473425
+      ],
+      "pmPeakVol": 523,
+      "amPeakVol": 358,
+      "avgSpeedKph": null,
+      "countDate": "2010-05-11",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229582",
+      "name": "Front St E: Frederick St - Sherbourne St",
+      "lonlat": [
+        -79.36848,
+        43.650245
+      ],
+      "pmPeakVol": 799,
+      "amPeakVol": 309,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-04",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229722",
+      "name": "Front St W: Yonge St - Bay St",
+      "lonlat": [
+        -79.37796564890137,
+        43.646240381662
+      ],
+      "pmPeakVol": 1412,
+      "amPeakVol": 1588,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229734",
+      "name": "Front St E: Berczy Park Trl - Church St",
+      "lonlat": [
+        -79.374045,
+        43.648315000000004
+      ],
+      "pmPeakVol": 925,
+      "amPeakVol": 523,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229710",
+      "name": "Front St W: Bay St - York St",
+      "lonlat": [
+        -79.38080000000001,
+        43.64564
+      ],
+      "pmPeakVol": 1530,
+      "amPeakVol": 1485,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229584",
+      "name": "Front St E: Sherbourne St - Princess St",
+      "lonlat": [
+        -79.36728500000001,
+        43.65053
+      ],
+      "pmPeakVol": 1328,
+      "amPeakVol": 1292,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229576",
+      "name": "Front St E: George St S - Frederick St",
+      "lonlat": [
+        -79.36969477310987,
+        43.649958746949075
+      ],
+      "pmPeakVol": 589,
+      "amPeakVol": 1065,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229564",
+      "name": "Front St E: Lower Jarvis St - George St S",
+      "lonlat": [
+        -79.37087503231643,
+        43.649630430087505
+      ],
+      "pmPeakVol": 1300,
+      "amPeakVol": 1258,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229558",
+      "name": "Front St E: Market St - Lower Jarvis St",
+      "lonlat": [
+        -79.37180000000001,
+        43.64929000000001
+      ],
+      "pmPeakVol": 816,
+      "amPeakVol": 361,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1229552",
+      "name": "Front St E: Wellington St E - Farquhars Lane",
+      "lonlat": [
+        -79.373585,
+        43.648655000000005
+      ],
+      "pmPeakVol": 566,
+      "amPeakVol": 1042,
+      "avgSpeedKph": null,
+      "countDate": "2010-03-02",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1206771",
+      "name": "Queens Quay E: Yonge St - Freeland St",
+      "lonlat": [
+        -79.37385170402831,
+        43.64221775144392
+      ],
+      "pmPeakVol": 538,
+      "amPeakVol": 343,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1206765",
+      "name": "Queens Quay E: John M Tinsley St - Lower Jarvis St",
+      "lonlat": [
+        -79.369655,
+        43.6437
+      ],
+      "pmPeakVol": 642,
+      "amPeakVol": 403,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1206759",
+      "name": "Queens Quay E: Lower Jarvis St - Richardson St",
+      "lonlat": [
+        -79.36841000000001,
+        43.64414000000001
+      ],
+      "pmPeakVol": 451,
+      "amPeakVol": 496,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1206437",
+      "name": "Queens Quay W: Bay St - York St",
+      "lonlat": [
+        -79.37844000000001,
+        43.64059
+      ],
+      "pmPeakVol": 1238,
+      "amPeakVol": 984,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1206777",
+      "name": "Queens Quay W: Yonge St - Bay St",
+      "lonlat": [
+        -79.3757497984435,
+        43.64154444352793
+      ],
+      "pmPeakVol": 1272,
+      "amPeakVol": 1149,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-15",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1174154",
+      "name": "Lower Simcoe St: Olympic Park Trl - Station St",
+      "lonlat": [
+        -79.38432,
+        43.64314
+      ],
+      "pmPeakVol": 901,
+      "amPeakVol": 697,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-01",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1174130",
+      "name": "Lower Simcoe St: Lake Shore Blvd W - Grand Trunk Cres",
+      "lonlat": [
+        -79.38351608859068,
+        43.641141541994486
+      ],
+      "pmPeakVol": 809,
+      "amPeakVol": 803,
+      "avgSpeedKph": null,
+      "countDate": "2009-12-01",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1202649",
+      "name": "Sheppard St: Adelaide St W - Temperance St",
+      "lonlat": [
+        -79.382265,
+        43.649945
+      ],
+      "pmPeakVol": 276,
+      "amPeakVol": 258,
+      "avgSpeedKph": null,
+      "countDate": "2009-09-22",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "1084265",
+      "name": "Lake Shore Blvd E: Lower Jarvis Gardiner Ramp - Richardson St",
+      "lonlat": [
+        -79.36921000000001,
+        43.64566500000001
+      ],
+      "pmPeakVol": 765,
+      "amPeakVol": 686,
+      "avgSpeedKph": null,
+      "countDate": "2009-04-20",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "954666",
+      "name": "Freeland St: Downes St - Lake Shore Blvd E",
+      "lonlat": [
+        -79.37378000000001,
+        43.643995000000004
+      ],
+      "pmPeakVol": 143,
+      "amPeakVol": 249,
+      "avgSpeedKph": null,
+      "countDate": "2007-11-20",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "954840",
+      "name": "Lower Simcoe St: Gardiner E / York St Ramp - Lake Shore Blvd W",
+      "lonlat": [
+        -79.38316500000002,
+        43.640305
+      ],
+      "pmPeakVol": 172,
+      "amPeakVol": 234,
+      "avgSpeedKph": null,
+      "countDate": "2007-11-20",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "961035",
+      "name": "Richmond St E: Jarvis St - George St",
+      "lonlat": [
+        -79.37219607374817,
+        43.65269189549673
+      ],
+      "pmPeakVol": 1190,
+      "amPeakVol": 1824,
+      "avgSpeedKph": null,
+      "countDate": "2007-10-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "961041",
+      "name": "Richmond St E: Church St - Jarvis St Richmond St E Ramp",
+      "lonlat": [
+        -79.374575,
+        43.652655
+      ],
+      "pmPeakVol": 1212,
+      "amPeakVol": 1841,
+      "avgSpeedKph": null,
+      "countDate": "2007-10-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "961047",
+      "name": "Richmond St E: Victoria St - Berti St",
+      "lonlat": [
+        -79.37706449439763,
+        43.652107718004046
+      ],
+      "pmPeakVol": 1216,
+      "amPeakVol": 1997,
+      "avgSpeedKph": null,
+      "countDate": "2007-10-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "960981",
+      "name": "Adelaide St E: St. James Park Trl - Jarvis St",
+      "lonlat": [
+        -79.37270000000001,
+        43.651565000000005
+      ],
+      "pmPeakVol": 1675,
+      "amPeakVol": 737,
+      "avgSpeedKph": null,
+      "countDate": "2007-10-30",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "926549",
+      "name": "Lombard St: Church St - Central Fire Station Lane",
+      "lonlat": [
+        -79.374155,
+        43.652035000000005
+      ],
+      "pmPeakVol": 194,
+      "amPeakVol": 214,
+      "avgSpeedKph": null,
+      "countDate": "2007-09-25",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "932245",
+      "name": "Temperance St: Bay St - Lane W of Bay and S of Richmond",
+      "lonlat": [
+        -79.38130000000001,
+        43.65052
+      ],
+      "pmPeakVol": 114,
+      "amPeakVol": 86,
+      "avgSpeedKph": null,
+      "countDate": "2007-06-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "932329",
+      "name": "Toronto St: King St E - Old Post Office Lane",
+      "lonlat": [
+        -79.37601000000001,
+        43.649765
+      ],
+      "pmPeakVol": 391,
+      "amPeakVol": 376,
+      "avgSpeedKph": null,
+      "countDate": "2007-06-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "939869",
+      "name": "Victoria St: Scott St - King St E",
+      "lonlat": [
+        -79.37659285892673,
+        43.64907537578121
+      ],
+      "pmPeakVol": 126,
+      "amPeakVol": 128,
+      "avgSpeedKph": null,
+      "countDate": "2007-06-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "520756",
+      "name": "Gardiner W / Yonge N Ramp",
+      "lonlat": [
+        -79.37124229442212,
+        43.64573142695887
+      ],
+      "pmPeakVol": 670,
+      "amPeakVol": 858,
+      "avgSpeedKph": null,
+      "countDate": "2005-05-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "525298",
+      "name": "Gardiner E / Lower Jarvis Ramp (id: 12335513)",
+      "lonlat": [
+        -79.378265,
+        43.642745000000005
+      ],
+      "pmPeakVol": 754,
+      "amPeakVol": 1560,
+      "avgSpeedKph": null,
+      "countDate": "2005-05-05",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "530807",
+      "name": "Lake Shore Blvd W: Bay St - Bremner Blvd",
+      "lonlat": [
+        -79.37828,
+        43.642790000000005
+      ],
+      "pmPeakVol": 2480,
+      "amPeakVol": 1699,
+      "avgSpeedKph": null,
+      "countDate": "2005-04-28",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "507099",
+      "name": "Bay St to Queen St W (id: 1145090)",
+      "lonlat": [
+        -79.38207413791207,
+        43.65199332287712
+      ],
+      "pmPeakVol": 959,
+      "amPeakVol": 678,
+      "avgSpeedKph": null,
+      "countDate": "2005-04-26",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "434205",
+      "name": "Spice Mill Lane",
+      "lonlat": [
+        -79.37604421384812,
+        43.651285312076
+      ],
+      "pmPeakVol": 9,
+      "amPeakVol": 5,
+      "avgSpeedKph": 12.7,
+      "countDate": "2004-07-06",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "434199",
+      "name": "Central Fire Station Lane",
+      "lonlat": [
+        -79.37322500000002,
+        43.652535
+      ],
+      "pmPeakVol": 5,
+      "amPeakVol": 7,
+      "avgSpeedKph": 12.6,
+      "countDate": "2004-07-06",
+      "countType": "ATR_SPEED_VOLUME"
+    },
+    {
+      "id": "410781",
+      "name": "Richmond St E: Stonecutters Lane - Sherbourne St",
+      "lonlat": [
+        -79.3691201016575,
+        43.6533849188678
+      ],
+      "pmPeakVol": 1314,
+      "amPeakVol": 2056,
+      "avgSpeedKph": null,
+      "countDate": "2003-11-25",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "380804",
+      "name": "Front St E: Scott St - Berczy Park Trl",
+      "lonlat": [
+        -79.37503000000001,
+        43.647825000000005
+      ],
+      "pmPeakVol": 1060,
+      "amPeakVol": 583,
+      "avgSpeedKph": null,
+      "countDate": "2003-09-23",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "302693",
+      "name": "Market St: The Esplanade - Front St E",
+      "lonlat": [
+        -79.37193500000001,
+        43.648585000000004
+      ],
+      "pmPeakVol": 82,
+      "amPeakVol": 70,
+      "avgSpeedKph": null,
+      "countDate": "2002-02-19",
+      "countType": "VEHICLE_CLASS"
+    },
+    {
+      "id": "151771",
+      "name": "York St: Richmond St W - Queen St W",
+      "lonlat": [
+        -79.38475500000001,
+        43.650830000000006
+      ],
+      "pmPeakVol": 1744,
+      "amPeakVol": 1421,
+      "avgSpeedKph": null,
+      "countDate": "1995-03-06",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2746",
+      "name": "Adelaide St W: Bay St - Sheppard St",
+      "lonlat": [
+        -79.38147000000001,
+        43.649750000000004
+      ],
+      "pmPeakVol": 1725,
+      "amPeakVol": 1549,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-24",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2754",
+      "name": "Adelaide St W: Sheppard St - York St",
+      "lonlat": [
+        -79.38310000000001,
+        43.6494
+      ],
+      "pmPeakVol": 1580,
+      "amPeakVol": 1400,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-24",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2759",
+      "name": "Adelaide St E: Yonge St - Ching Lane",
+      "lonlat": [
+        -79.3784257878661,
+        43.6504222257725
+      ],
+      "pmPeakVol": 1604,
+      "amPeakVol": 1174,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-24",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "2760",
+      "name": "Adelaide St W: York St - University Ave",
+      "lonlat": [
+        -79.384815,
+        43.64903
+      ],
+      "pmPeakVol": 1591,
+      "amPeakVol": 1616,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-24",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "4565",
+      "name": "Richmond St W: Sheppard St - York St",
+      "lonlat": [
+        -79.383635,
+        43.65066
+      ],
+      "pmPeakVol": 1451,
+      "amPeakVol": 1421,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-22",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "4564",
+      "name": "Richmond St E: Yonge St - Victoria St",
+      "lonlat": [
+        -79.37836000000001,
+        43.651830000000004
+      ],
+      "pmPeakVol": 1696,
+      "amPeakVol": 1806,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-22",
+      "countType": "ATR_VOLUME"
+    },
+    {
+      "id": "4553",
+      "name": "Richmond St W: Yonge St - Bay St",
+      "lonlat": [
+        -79.380145,
+        43.651435000000006
+      ],
+      "pmPeakVol": 1297,
+      "amPeakVol": 1409,
+      "avgSpeedKph": null,
+      "countDate": "1994-11-22",
+      "countType": "ATR_VOLUME"
+    }
+  ]
+}

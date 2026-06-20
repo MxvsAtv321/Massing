@@ -13,9 +13,11 @@
     "verify:heights": "tsx scripts/verify-heights.ts",
     "verify:solar": "tsx scripts/verify-solar.ts",
     "fetch:network": "tsx scripts/fetch-network.ts",
+    "fetch:counts": "tsx scripts/fetch-counts.ts",
     "verify:network": "tsx scripts/verify-network.ts",
     "verify:demand": "tsx scripts/verify-demand.ts",
-    "verify:flow": "tsx scripts/verify-flow.ts"
+    "verify:flow": "tsx scripts/verify-flow.ts",
+    "verify:counts": "tsx scripts/verify-counts.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
