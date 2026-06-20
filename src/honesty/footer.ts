@@ -53,7 +53,7 @@ export function buildFooterLines(input: FooterInput): string[] {
   lines.push(`${torontoDateTimeStr} | Sun: ${sunStr}`);
 
   lines.push(
-    "Not modeled: traffic change, displacement, property values, human movement, terrain, footprint error"
+    "Not modeled: induced travel demand, displacement, property values, human movement, terrain, footprint error"
   );
 
   lines.push(bandScopeNote);

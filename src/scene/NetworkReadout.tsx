@@ -49,7 +49,7 @@ export function NetworkReadout({ stats }: { stats: NetworkStats }) {
 const styles: Record<string, React.CSSProperties> = {
   container: {
     position: "fixed",
-    top: 20,
+    bottom: 20,
     left: 20,
     background: "rgba(10,10,12,0.82)",
     backdropFilter: "blur(8px)",

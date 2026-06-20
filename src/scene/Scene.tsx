@@ -21,6 +21,9 @@ import { EditControls } from "./EditControls";
 import { HypotheticalBuildings } from "./HypotheticalBuildings";
 import { RoadNetwork } from "./RoadNetwork";
 import { NetworkReadout } from "./NetworkReadout";
+import { DemandLayer } from "./DemandLayer";
+import { DemandControls } from "./DemandControls";
+import { useDemandScenario } from "../traffic/useDemandScenario";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
@@ -28,6 +31,7 @@ import type { ClusterIndexEntry } from "../model/types";
 import type { ClusterProvenanceEntry } from "../honesty/confidence";
 import type { FooterSourcesSlice } from "../honesty/footer";
 import type { RoadEdgeForScene, NetworkStats } from "./roadGeometry";
+import type { Place } from "../traffic/demand";
 
 const DEG2RAD = Math.PI / 180;
 
@@ -256,6 +260,7 @@ export type SceneProps = {
   sourcesFooter: FooterSourcesSlice;
   roadEdges: RoadEdgeForScene[];
   networkStats: NetworkStats;
+  gateways: Place[];
 };
 
 export function Scene({
@@ -267,9 +272,12 @@ export function Scene({
   sourcesFooter,
   roadEdges,
   networkStats,
+  gateways,
 }: SceneProps) {
   const [tintByConfidence, setTintByConfidence] = useState(false);
   const [showRoads, setShowRoads] = useState(true);
+  const [showDemand, setShowDemand] = useState(false);
+  const demand = useDemandScenario(gateways);
 
   // Ref to the WebGL canvas for PNG export.
   const glCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -353,6 +361,15 @@ export function Scene({
 
         <RoadNetwork edges={roadEdges} visible={showRoads} />
 
+        <DemandLayer
+          places={gateways}
+          flows={demand.flows}
+          visible={showDemand}
+          pendingOrigin={demand.pendingOrigin}
+          pendingDestination={demand.pendingDestination}
+          onGatewayClick={demand.onGatewayClick}
+        />
+
         <CameraRig bounds={bounds} />
         <CanvasCapture onCapture={captureCanvas} />
       </Canvas>
@@ -372,12 +389,29 @@ export function Scene({
         onClearClick={interaction.clearClick}
       />
 
-      <BuildingInfoPanel
-        selectedClusterId={selectedClusterId}
-        selectedHeightM={selectedHeightM}
-        clusterProvenances={clusterProvenances}
-        sun={sun}
-      />
+      {/* Top-right is shared: the building info panel and the demand editor are mutually
+          exclusive, switched by the Demand toggle. */}
+      {showDemand ? (
+        <DemandControls
+          places={gateways}
+          flows={demand.flows}
+          pendingOrigin={demand.pendingOrigin}
+          pendingDestination={demand.pendingDestination}
+          setOrigin={demand.setOrigin}
+          setDestination={demand.setDestination}
+          addPendingFlow={demand.addPendingFlow}
+          removeFlow={demand.removeFlow}
+          loadExample={demand.loadExample}
+          clearFlows={demand.clearFlows}
+        />
+      ) : (
+        <BuildingInfoPanel
+          selectedClusterId={selectedClusterId}
+          selectedHeightM={selectedHeightM}
+          clusterProvenances={clusterProvenances}
+          sun={sun}
+        />
+      )}
 
       <DoNotMeasurePanel />
 
@@ -401,6 +435,12 @@ export function Scene({
             style={{ ...styles.ctrlBtn, ...(showRoads ? styles.ctrlBtnActive : {}) }}
           >
             {showRoads ? "● Roads" : "○ Roads"}
+          </button>
+          <button
+            onClick={() => setShowDemand((d) => !d)}
+            style={{ ...styles.ctrlBtn, ...(showDemand ? styles.ctrlBtnActive : {}) }}
+          >
+            {showDemand ? "● Demand" : "○ Demand"}
           </button>
           <button
             onClick={() => setTintByConfidence((t) => !t)}

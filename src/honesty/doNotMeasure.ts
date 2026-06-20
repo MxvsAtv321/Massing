@@ -1,8 +1,8 @@
 // What this tool refuses to model, framed as a feature not a limitation.
 export const DO_NOT_MEASURE_BEHAVIORAL: readonly { label: string; reason: string }[] = [
   {
-    label: "Traffic change",
-    reason: "Trip generation and routing require behavioral models not grounded in geometry.",
+    label: "Induced travel demand",
+    reason: "We never predict the trips a development generates. Traffic demand is a scenario you set, not a model output.",
   },
   {
     label: "Displacement",
@@ -18,7 +18,7 @@ export const DO_NOT_MEASURE_BEHAVIORAL: readonly { label: string; reason: string
   },
 ];
 
-// Disclosed v1 simplifications — also part of the honesty brand.
+// Disclosed v1 simplifications, also part of the honesty brand.
 export const DO_NOT_MEASURE_SIMPLIFICATIONS: readonly { label: string; reason: string }[] = [
   {
     label: "Terrain and ground slope",

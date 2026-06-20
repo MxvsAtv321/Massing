@@ -1,10 +1,13 @@
+import fs from "fs";
 import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
 import { loadRoadNetwork } from "../src/network/build";
+import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
 import { Scene } from "../src/scene/Scene";
 import { buildClusterProvenances } from "../src/honesty/confidence";
 import type { BuildingForScene } from "../src/scene/buildings";
 import type { RoadEdgeForScene, NetworkStats } from "../src/scene/roadGeometry";
+import type { Place } from "../src/traffic/demand";
 import type { FooterSourcesSlice } from "../src/honesty/footer";
 
 export default async function Page() {
@@ -49,6 +52,12 @@ export default async function Page() {
     connected: roadNetwork.coverage.connected,
   };
 
+  // Cordon gateways: through-traffic entry/exit points, resolved to network nodes.
+  const cordonFile = JSON.parse(
+    fs.readFileSync(path.join(process.cwd(), "data", "cordon.json"), "utf8")
+  ) as CordonFile;
+  const gateways: Place[] = resolveCordon(roadNetwork, cordonFile).places;
+
   // Per-cluster provenance for the building info panel.
   const clusterProvenances = buildClusterProvenances(model.buildings, model.clusters);
 
@@ -72,6 +81,7 @@ export default async function Page() {
       sourcesFooter={sourcesFooter}
       roadEdges={roadEdges}
       networkStats={networkStats}
+      gateways={gateways}
     />
   );
 }
