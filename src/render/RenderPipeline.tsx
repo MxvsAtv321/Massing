@@ -3,7 +3,7 @@
 import { useThree, useFrame } from "@react-three/fiber";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
-import { pass, mrt, output, transformedNormalView } from "three/tsl";
+import { pass, mrt, output, transformedNormalView, vec3, vec4 } from "three/tsl";
 import { ao } from "three/addons/tsl/display/GTAONode.js";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
 import Stats from "stats-gl";
@@ -31,7 +31,11 @@ export function RenderPipeline() {
       const depth = scenePass.getTextureNode("depth");
 
       const aoPass = ao(depth, normal, camera);
-      const lit = aoPass.getTextureNode().mul(color);
+      // GTAO stores occlusion in the red channel only (RedFormat). Broadcast it
+      // to rgb so it darkens the beauty, rather than multiplying the raw texture
+      // in and zeroing green and blue (which floods the scene red).
+      const occlusion = aoPass.getTextureNode().r;
+      const lit = color.mul(vec4(vec3(occlusion), 1));
       const bloomPass = bloom(lit, 0.6, 0.5, 0.85);
 
       const pp = new THREE.PostProcessing(gl);
