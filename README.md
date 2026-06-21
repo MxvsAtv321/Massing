@@ -1,58 +1,47 @@
 # Massing
 
-Type a plain-English change to a Toronto neighborhood. Watch what it does to sunlight on a real park. See honest uncertainty, not a confident lie.
+A cinematic, real-time city builder and simulator on real Toronto data. Fly through a gorgeously lit 3D slice of the St. Lawrence / St. James Park neighborhood, reshape it with the feel of a professional 3D editor, and watch the city respond.
 
-Built for the Velocity Future Cities Innovation Challenge.
+The bar: make a graphics or simulation engineer lean in and ask "this runs in a browser?".
 
----
+## Status
 
-## The five-second moment
+Ground-up rebuild in progress. The repo began as a shadow-honesty decision tool and is being rebuilt into the cinematic simulator described here. The target architecture and the decision log are in `docs/architecture.md` and `docs/decisions.md`. The rebuild proceeds in numbered units; the renderer spine (a WebGPU canvas with an automatic WebGL2 fallback) is standing.
 
-A user types "add a 30-storey tower here." They see the shadow sweep across St. James Park in real time, a confidence band on the shadow extent, and an explicit list of what the tool refuses to model. That moment is the entire product. Everything else is scope cut.
+## What it is
 
-## What it does
+- A real slice of Toronto, every building extruded from its own measured City of Toronto height, in true local metres.
+- A WebGPU rendering pipeline: physically based materials, image-based lighting, cascaded sun shadows, and a node-based post stack (GTAO, bloom, fog, AgX tone mapping), tuned for a cinematic look in real time.
+- A live simulation: time of day driven by real solar position, traffic flow on the real street network, and growth, all reacting when you reshape the city.
+- A professional editor feel: orbit and fly cameras, in-world selection, transform gizmos, and natural-language edits that resolve to the same bounded operations.
 
-- Renders real City of Toronto 3D massing data for the St. Lawrence / St. James Park area, with every polygon extruded at its own measured height
-- Computes sun position with atmospheric refraction via `astronomy-engine` for any time in Toronto local time, scrubbed to valid solar hours
-- Casts PCF shadows for interactive feedback and geometric shadow polygons as the measurement source of truth for every printed number
-- Accepts a click for location and a natural-language description of a change; the LLM returns a structured `EditOp`, previews it as a diff, and applies it only on confirmation
-- Shows per-building data-quality badges distinguishing measured, estimated, and hypothetical buildings
-- Attaches a confidence band to every shadow readout, propagated from real height uncertainty by source
-- Names what it will not model: traffic change, displacement, property values, human movement, ground slope -- these are explicit do-NOT-measure disclosures, not gaps
-- Bakes provenance into the exported image so the footer survives a screenshot pasted into a council slide
+## The one line
 
-## What it does not do
-
-Ground slope and terrain, footprint and position error, behavioral predictions of any kind. These are not gaps; they are in the do-NOT-measure list by design.
+Spectacle and feel are primary; accuracy is secondary. The one line never crossed is dressing invented simulation as measured authority. Grounded values (real building heights, real road geometry) read as real; simulated values (flow, growth, weather, agents) read as part of the simulated world.
 
 ## Stack
 
-- Next.js 15 App Router, TypeScript, Vercel, pnpm
-- React Three Fiber / Three.js for 3D
-- `astronomy-engine` as the single solar engine (refraction on, validated against NREL SPA)
-- Local ENU tangent plane anchored at the neighborhood centroid, metric units throughout; never Web Mercator for shadow geometry
+- Next.js 15 App Router, TypeScript, Vercel, pnpm.
+- React Three Fiber on the Three.js WebGPU entry, TSL for materials, post, and compute, with an automatic WebGL2 fallback.
+- Local ENU tangent plane anchored at the neighborhood centroid, metric throughout; never Web Mercator for geometry.
+- astronomy-engine for sun position (refraction on).
 
 ## Data
 
-`data/stlawrence.geojson` is a baked snapshot of City of Toronto 3D Massing data, clipped to the St. Lawrence neighborhood. Heights are the `AVG_HEIGHT` field (height above grade, metres), measured by LiDAR and Site Plan sources. The snapshot is the single source; nothing is fetched at build or runtime.
+`data/stlawrence.geojson` is a baked snapshot of City of Toronto 3D Massing data, clipped to the St. Lawrence neighborhood (1315 building polygons). Heights are the `AVG_HEIGHT` field (metres above grade). `data/network.json` is the OpenStreetMap drivable road network for the catchment. The snapshot is the single source; nothing is fetched at build or runtime.
 
-Tall buildings are often split across podium and shaft polygons. Every polygon is kept and extruded at its own height. The grouping subsystem clusters polygons into logical buildings for identity and readouts, using the cluster maximum as the representative height.
-
-Provenance: City of Toronto 3D Massing 2025, dated 2025-12-05.
+Attribution: City of Toronto 3D Massing 2025; road network OpenStreetMap contributors (ODbL).
 
 ## Commands
 
 ```
-pnpm dev            run the app
-pnpm build          production build
-pnpm lint           lint
-pnpm typecheck      type check
-pnpm test           unit tests
-pnpm verify:heights height-verification gate against the real snapshot
+pnpm dev         run the app
+pnpm build       production build
+pnpm lint        lint
+pnpm typecheck   type check
+pnpm test        unit tests
 ```
 
 ## Design decisions
 
-See `docs/decisions.md` for the five settled ADRs and `docs/architecture.md` for the full design rationale.
-
-Key decisions: one neighborhood only (ADR-001), flat ground plane disclosed (ADR-002), `astronomy-engine` everywhere with SPA as oracle only (ADR-003), click for location plus natural language for parameters (ADR-004), shadow-only first (ADR-005).
+See `docs/decisions.md` for the rebuild ADRs (R-series) and the disposition of the originals, and `docs/architecture.md` for the full design.
