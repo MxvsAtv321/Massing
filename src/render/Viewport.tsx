@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { createRenderer } from "./createRenderer";
 import { pickBackend, detectWebGPU, type Backend } from "./pickBackend";
 import { Scene } from "./Scene";
-import { PerfStats } from "./PerfStats";
+import { RenderPipeline } from "./RenderPipeline";
 import type { CityPayload } from "./types";
 
 const CLEAR_COLOR = "#0b0d10";
@@ -23,7 +23,7 @@ export default function Viewport({ payload }: { payload: CityPayload }) {
       >
         <color attach="background" args={[CLEAR_COLOR]} />
         <Scene payload={payload} />
-        <PerfStats />
+        <RenderPipeline />
         <BackendReporter onResolved={setBackend} />
       </Canvas>
       <BackendBadge backend={backend} />
