@@ -48,7 +48,11 @@ export function RenderPipeline() {
   }, [gl, scene, camera]);
 
   useEffect(() => {
-    void stats.init(gl.domElement);
+    // Pass the WebGPURenderer, not its canvas: stats-gl takes the WebGPU path
+    // (timestamp-query GPU timing via renderer.backend). Passing the canvas made
+    // it try canvas.getContext("webgl2"), which fails on a canvas that already
+    // owns a WebGPU context.
+    void stats.init(gl);
     document.body.appendChild(stats.dom);
     stats.dom.style.left = "auto";
     stats.dom.style.right = "0px";
