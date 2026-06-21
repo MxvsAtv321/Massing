@@ -1,4 +1,4 @@
-import type { BuildingForScene } from "../scene/buildings";
+import type { BuildingForScene } from "./building";
 import type { AddBuildingOp, EditOp } from "./editOp";
 import { storeyToMetres } from "./editOp";
 

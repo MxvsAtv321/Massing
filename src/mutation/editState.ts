@@ -10,7 +10,7 @@ import {
   type HypotheticalBuilding,
 } from "./applyEdit";
 import type { EditOp } from "./editOp";
-import type { BuildingForScene } from "../scene/buildings";
+import type { BuildingForScene } from "./building";
 
 type EditLayerInternalState = {
   log: EditOp[];

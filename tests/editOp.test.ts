@@ -15,7 +15,7 @@ import {
   emptyOverlay,
   buildHypotheticalBuilding,
 } from "../src/mutation/applyEdit";
-import type { BuildingForScene } from "../src/scene/buildings";
+import type { BuildingForScene } from "../src/mutation/building";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
