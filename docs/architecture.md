@@ -1,303 +1,450 @@
-# Massing, v1 Architecture Reference
+# Massing, Architecture Reference (rebuild)
 
-Status: hackathon engine spine. Scope is one Toronto neighborhood, shadow done right, honesty layer present, stop. This doc is the shared state. Decisions marked `[OPEN]` need your call and become ADRs in `docs/decisions.md`. Everything in section 1 is treated as settled and is not relitigated.
+Status: target architecture for the ground-up rebuild into a cinematic, real-time,
+interactive city builder and simulator on real Toronto data. This document is the shared
+state. It supersedes the prior shadow-honesty architecture in full. Settled decisions live
+in `docs/decisions.md` as ADRs; this document is the design and the reasoning.
 
----
-
-## 0. Purpose and reading guide
-
-This describes the four parts of v1 as a reusable engine plus a thin problem skin, so the spine is built before the June 8 kickoff and pointed at whatever housing or resilience problem the challenge poses. The engine knows nothing about the specific problem. The skin (which neighborhood, which consequences are surfaced, the demo narrative) is chosen at kickoff.
-
-Read sections 2 and 5 first. Section 2 is the shape. Section 5 is the hero and the place most of the risk lives. Section 10 is the consolidated list of calls I need from you. Section 11 is the three places I think you are underestimating difficulty.
+Read sections 1 (identity), 3 (rendering), and 4 (simulation) first. They are the spine.
+Section 8 is the rebuild sequence. Section 9 is the design work to commission.
 
 ---
 
-## 1. What is settled (not relitigated)
+## 1. Product identity
 
-These come from your hard rules and the research. I treat them as fixed.
+A cinematic creative simulator and sandbox. You fly through a gorgeous, physically lit 3D
+slice of real Toronto, reshape it with the feel of a professional 3D editor, and watch the
+city respond with immediate, legible, satisfying consequence. The bar is that a graphics or
+simulation engineer leans in and asks "this runs in a browser?".
 
-- Toronto, real City of Toronto open-data heights, measured not guessed.
-- Next.js 15 App Router, TypeScript, deploy on Vercel, pnpm.
-- React Three Fiber / Three.js as the 3D substrate (real-time moving shadows is the requirement that rules out deck.gl and Cesium).
-- Local ENU tangent plane anchored at the neighborhood centroid, metric units. Not Web Mercator.
-- Merged-geometry buildings, single `DirectionalLight` with `PCFSoftShadowMap`, `shadowMap.autoUpdate = false` with explicit `needsUpdate = true` on sun move.
-- Typed structured city model where every load-bearing field carries `(value, source, confidence, date)`.
-- LLM mutation as a closed `EditOp` union with bounded numerics and existing-entity-ID references, structured-output / strict mode, a pre-resolved scene-description context block, preview-before-apply with a diff. The model never computes geometry.
-- Ship only consequences whose confidence is honestly computable (geometry-derived). Behavioral consequences go in the do-NOT-measure list. Traffic may appear only as a factual readout of existing open-data counts, never as a prediction.
-- Confidence bands, never single numbers. Provenance baked into the exported artifact, not just the surrounding UI.
+Two mandates, in priority order:
 
-The one locked item I am pushing back on is SunCalc as the live solar engine. That is a real problem, written up in section 5 and flagged in section 10. Per your rule I am surfacing it rather than quietly overriding it.
+1. Functionality. A living, manipulable city. Reshape and watch. Latency is the enemy.
+2. Front end. A cinematic look with no business running in a browser. Blender and Unreal
+   register.
+
+Spectacle, fluid interactivity, and plausible, legible simulation are the goals. Real-world
+data is the canvas, not a contract. Validated accuracy is explicitly secondary.
+
+The one line never crossed: do not dress invented simulation in the costume of authority.
+No fake-precise numbers presented as measured truth, no badges implying validation that does
+not exist. A value is either honestly grounded (the real Toronto height a building was
+extruded from, the real road geometry) or it is clearly part of the simulated world (flow,
+growth, agents). Inside that line, invent freely and go maximal.
+
+This reorients the prior product, which framed itself as a forecasting and honesty-bands
+instrument. The rebuild drops the honesty-theater apparatus (confidence badges, the
+do-not-measure list, provenance-as-contract). It carries forward exactly one principle:
+simulated values are never disguised as measured truth. In the new product that principle is
+served by visual and linguistic register (simulated things look and read as simulated), not
+by a badge subsystem.
 
 ---
 
-## 2. System shape: engine spine vs problem skin
+## 2. What carries forward from the old build
 
-```mermaid
-flowchart TB
-    subgraph BUILD["Build-time pipeline (run once, pre-kickoff)"]
-        SRC["City of Toronto open data<br/>3D Massing: footprints + EleZ height<br/>2025 snapshot, MTM projection"]
-        CLIP["Clip to one neighborhood<br/>reproject to local ENU<br/>stamp provenance per feature"]
-        ASSET["Static city asset<br/>GeoJSON + provenance manifest<br/>versioned in the repo"]
-        SRC --> CLIP --> ASSET
-    end
+The old repo is a shadow-honesty decision tool. Most of its value to the rebuild is in three
+small, clean, well-tested modules and the baked data, not in its rendering or its honesty UI.
 
-    subgraph ENGINE["Reusable engine spine (problem-agnostic)"]
-        MODEL["Typed City Model<br/>every field = value, source, confidence, date<br/>real vs hypothetical flag"]
-        COORD["Coordinate + scene core<br/>local ENU, metric<br/>merged geometry, R3F"]
-        SOLAR["Solar + shadow core (HERO)<br/>sun vector, refraction, TZ/DST<br/>render shadows + measured shadow polygons"]
-        CONSEQ["Consequence interface<br/>compute(model) returns value, band, provenance<br/>Shadow is the reference impl"]
-        MUT["Mutation layer<br/>NL to closed EditOp union<br/>preview, diff, apply"]
-        HON["Honesty core<br/>badges, bands, do-NOT-measure list<br/>provenance-stamped export"]
-        ASSET --> MODEL
-        MODEL --> COORD --> SOLAR
-        MODEL --> CONSEQ
-        SOLAR --> CONSEQ
-        MUT --> MODEL
-        CONSEQ --> HON
-        SOLAR --> HON
-    end
+Kept as-is (the load-bearing real assets):
 
-    subgraph SKIN["Problem skin (chosen at kickoff)"]
-        NB["Which neighborhood<br/>which consequences surfaced<br/>demo narrative"]
-    end
+- The baked Toronto data in `data/`. `stlawrence.geojson` is 1315 building massing polygons
+  with real `AVG_HEIGHT`, EPSG:3857. `network.json` is the OSM drivable road graph for the
+  catchment. `traffic-counts.json`, `cordon.json`, `known-heights.json`, `known-routes.json`,
+  `sources.json` round it out. This is the canvas. It stays.
+- The coordinate frame. `src/coords/webmercator.ts` (3857 inverse) and `src/coords/enu.ts`
+  (equirectangular tangent-plane to local ENU metres, with the `cos(lat0)` correction).
+  Reproject through geodetic lon/lat to local ENU; never recenter in 3857 metres. This is
+  correct and non-negotiable: Web Mercator inflates horizontal distance about 1.38x at
+  Toronto's latitude, which would distort the entire city by 38 percent. Keep verbatim.
+- The solar core. `src/solar/sun.ts` (astronomy-engine, refraction on, the ENU-to-Three axis
+  mapping) and `src/solar/time.ts` (Toronto-zoned instants via luxon). Correct, isolated, and
+  exactly what the time-of-day system needs. Keep, then extend (a sky/atmosphere model layers
+  on top; the sun vector itself is done).
 
-    ENGINE --> SKIN
+Reused with changes:
+
+- The city-model loader and types (`src/model/`). The reprojection pipeline, two-pass origin
+  computation, MultiPolygon explosion, and artifact filtering are reused. The `Provenance<T>`
+  and `Confidence` wrappers on every field are stripped to a lean simulation model: a building
+  is geometry plus a measured height plus a mutable per-frame simulation state. Provenance
+  collapses to a single dataset-level source string for attribution.
+- Footprint grouping (`src/model/grouping.ts`). The union-find clustering of podium and shaft
+  polygons into logical buildings is reused for selection identity. The same algorithm; a
+  leaner output type.
+- The road network parser (`src/network/`). The typed directed graph, tag parsing, topology
+  splitting, ENU reprojection against the shared origin, and connectivity analysis are reused
+  as the substrate for the vehicle-flow system. The honesty-framed coverage stats are dropped.
+- The mutation spine (`src/mutation/`, `app/api/edit/route.ts`). The closed `EditOp` union,
+  the bounded-numeric Zod schema, the click-for-where plus language-for-what split, and the
+  preview-diff-apply loop are a good interaction skeleton. They are rebuilt against the new
+  editor (gizmos and direct manipulation become the primary path; language becomes one input
+  among several) and expanded beyond add/modify/remove height.
+- The traffic engine math (`src/traffic/assignment.ts`, BPR assignment). Reused as the
+  coarse demand-to-flow solver that seeds the live agent simulation, recast from a validated
+  wind tunnel into a spectacle-first flow field. The GEH count-validation harness
+  (`src/traffic/validation.ts`) and the do-not-measure framing are dropped.
+
+Demolished (out entirely, against the new identity):
+
+- The honesty apparatus. `src/honesty/` (badges, bands, do-not-measure panel, the
+  provenance-baked export footer), the confidence-band machinery, and the "calibrated
+  instrument" UI language. This is the costume of authority the new identity refuses.
+- The entire legacy presentation layer. `src/scene/*` and `src/ui/*` are R3F WebGL plumbing
+  for a flat, diagrammatic look (single directional light, PCF shadows, flat-shaded extrusions,
+  glass-panel readouts). The rebuild replaces it wholesale with a WebGPU pipeline. The
+  geometry-building helpers in `src/scene/buildings.ts` (shape construction, axis mapping,
+  merging) are a useful reference for the new BatchedMesh builder but are not kept.
+- The validation harness and gates as a product surface. The scripts (`verify-heights`,
+  `verify-solar`, `verify-network`, etc.) and `known-*.json` stay in the repo as developer
+  sanity checks on the data, but they are no longer load-bearing and no longer gate the build.
+
+---
+
+## 3. Rendering pipeline
+
+The look is lighting and post, not polygon count. The target register is high-end offline
+render, reverse-engineered for real time. Nanite and Lumen are not in the browser, so the
+perceived gap is closed where most of that quality actually lives: physically based materials,
+image-based lighting, a real post stack, and deliberate art direction. Scale is handled by
+WebGPU compute and instancing.
+
+### 3.1 Renderer
+
+Three.js `WebGPURenderer` (r171+; we are on r184). Async init with an automatic WebGL2 backend
+fallback so the app still runs where WebGPU is unavailable. The fallback is a backend of the
+same renderer, not a separate pipeline: TSL materials and the node post pipeline compile to GLSL
+and run on WebGL2 too. What does not survive the fallback is the compute-dependent post passes
+(GTAO, SSR, advanced TAA), which drop to a reduced subset there; the fallback is visibly lesser
+by decision (ADR-R01), not a free degrade. React Three Fiber is the declarative layer, drei for
+camera, controls, and helpers. Authored through R3F's WebGPU entry so the renderer, materials,
+and node pipeline are one stack.
+
+### 3.2 Materials and shading, TSL
+
+All materials, shaders, post passes, and compute kernels are authored once in TSL (Three
+Shading Language) and compiled to WGSL on WebGPU and GLSL on the fallback. No hand-written
+WGSL or GLSL strings except where TSL genuinely cannot express a kernel. This is the single
+biggest leverage point: one shader source, two backends, node-graph composability.
+
+Buildings, ground, roads, and water use physically based node materials (metalness-roughness)
+fed by the IBL environment. Buildings get subtle facade variation (procedural window grids,
+per-building hue and roughness jitter, carried as per-object data on the BatchedMesh) so a city
+of extruded prisms does not read as flat gray. Windows are emissive at night, driven by the
+time-of-day uniform.
+
+### 3.3 Lighting
+
+- Image-based lighting from an HDRI environment map, prefiltered for specular and irradiance.
+  The environment is the dominant ambient term and the source of believable reflections.
+- One sun as a directional light, position driven by the existing astronomy-engine vector for
+  the selected Toronto instant. The sun color and intensity are art-directed by time of day.
+- Soft cascaded shadow maps (CSM) for the sun. The single shadow camera of the old build does
+  not survive city scale at low sun; cascades give crisp near shadows and stable far shadows.
+  Three to four cascades, tuned splits, PCF or PCSS-style softening that widens with distance.
+- A small set of artificial lights at night (street and window glow) handled cheaply: mostly
+  emissive materials plus bloom rather than many real light sources.
+
+### 3.4 Post stack (node-based RenderPipeline)
+
+The composed post chain, in order, built on the WebGPU node post pipeline (not the legacy
+WebGL-only `EffectComposer`):
+
+1. Ground-truth ambient occlusion (GTAO) for contact darkening and depth.
+2. Screen-space reflections (SSR) for wet roads and glass, gated by roughness.
+3. Depth of field, art-directed, restrained, stronger in cinematic camera moves.
+4. Bloom on the emissive and high-luminance pass (windows, sun glints, wet highlights).
+5. Volumetric light and atmospheric/height fog for depth and mood (god rays at low sun).
+6. Temporal antialiasing (TAA), or subpixel morphological AA where TAA ghosts.
+7. Tone mapping: AgX. Chosen over ACES for cleaner highlight desaturation and a more
+   filmic, less orange shoulder, which flatters a city skyline at golden hour.
+8. LUT-based color grading per time-of-day mood.
+9. Restrained vignette, film grain, and chromatic aberration as the final filmic seasoning.
+
+Every stage is a toggle and a strength uniform so the look is tuned with leva in development
+and locked to art-directed presets at runtime.
+
+This chain runs through the node post pipeline on both backends (ADR-R01). On the WebGPU backend
+it runs in full; on the WebGL2 fallback the compute-dependent passes (GTAO, SSR, the temporal
+history in TAA) drop, leaving tone mapping, a cheap bloom, fog, and grade as the known-good
+subset. Proving the expensive, least-proven passes (GTAO and bloom) on the WebGPU node pipeline
+through R3F is the explicit job of Unit 1; it is the seam most likely to be rough, more than the
+PBR and IBL, which are well-trodden.
+
+### 3.5 Performance
+
+Performance is the enabler of fidelity. Targets and techniques:
+
+- The static city renders in a handful of draw calls via `BatchedMesh`, not InstancedMesh: the
+  1315 building polygons are unique geometries batched into one draw with per-object culling and
+  selection (ADR-R09), roads likewise. Target at or under roughly 150 draws for buildings,
+  roads, and ground combined.
+- Asset compression: KTX2 (Basis) for textures, Draco for any loaded meshes.
+- LOD and frustum culling for distant geometry; the city periphery drops to silhouettes.
+- Baked AO and baked lighting for the static shell where it can be precomputed; dynamic
+  lighting reserved for the sun sweep and night windows.
+- GPU compute via WebGPU and TSL for anything that scales (agents, flow field, particles).
+- Profiling is mandatory before optimizing: stats-gl for frame and GPU timing, plus
+  `renderer.info` for draw calls, triangles, and texture/program counts. Findings recorded
+  back into `docs/decisions.md` and the perf notes. The frame-time budget is a release gate, not
+  a guideline: 60 fps on the WebGPU reference device and a 30 fps floor on the WebGL2 fallback
+  device, and a milestone is not done until it holds on both (ADR-R08).
+
+---
+
+## 4. Simulation and systems
+
+The architectural thesis: the same WebGPU layer renders the city and runs its simulation.
+Data lives in GPU buffers; compute shaders advance it; the render reads it directly.
+
+### 4.1 Data layout
+
+Data-oriented design. Agents and any large simulated population are structure-of-arrays
+(SoA): typed arrays per attribute (position, velocity, lane, destination, state), not arrays
+of objects. This is cache-friendly on the CPU and maps one-to-one onto GPU storage buffers
+when a system runs on compute. A light ECS-style registry tracks which systems own which
+buffers and the order they run.
+
+### 4.2 Fixed-timestep loop, decoupled from render
+
+Simulation runs on a fixed timestep (60 Hz, `dt = 1/60 s`) fully decoupled from the render
+loop. The render interpolates between the last two simulation states by an alpha so motion is
+smooth at any display rate, and the simulation is stable and deterministic independent of
+frame rate. An accumulator drains real elapsed time into fixed steps, clamped to avoid the
+spiral of death when a tab stalls.
+
+### 4.3 Systems
+
+City systems that make the place feel alive and consequential when reshaped. Each must read
+clearly on screen.
+
+- Time and sky. The clock advances (scrubbable and playable). Sun vector from
+  astronomy-engine; sky color, fog, light intensity, and window emissivity are art-directed
+  functions of the time. This is the cheapest, most cinematic system and ships first.
+- Weather and mood. Clear, overcast, rain. Rain wets roads (raises SSR and lowers roughness),
+  adds particles, shifts the grade. A deliberate, art-directed set of moods, not defaults.
+- Vehicle and pedestrian flow on the real network. The OSM graph carries a flow field from
+  the BPR solver (reused math); agents are spawned onto edges as instanced meshes and advanced
+  on the GPU, density and speed from the flow field. This is the headline "alive" system.
+- Density and growth. Rezoning or adding capacity triggers visible, legible change over time:
+  lots fill, heights rise, lights come on. Growth is plainly part of the simulated world.
+- Light and shadow as a system: the sun sweep is itself a consequence the user drives.
+
+Spatial partitioning (a uniform grid over the ENU plane) serves neighbor queries for agents
+and broad-phase culling. Systems are stable, debuggable, and hot-reloadable: a system is a
+pure step over its buffers plus a setup, so it can be swapped without reloading the city.
+
+### 4.4 CPU/WASM versus GPU compute
+
+The decision per system is clarity versus scale:
+
+- GPU compute (TSL): agent advection along the flow field, particle systems, the flow field
+  itself once it is large, any per-instance animation. These scale to tens of thousands and
+  belong on the GPU.
+- CPU (TypeScript), or Rust-to-WASM where the logic is clearer or hot: graph routing
+  (Dijkstra over the network), the BPR assignment increments, growth rules, selection and
+  edit application. WASM is held in reserve for a profiled CPU hotspot, not adopted up front.
+
+The seam is explicit: a system declares whether it steps on CPU or GPU, and the buffer
+ownership registry makes the handoff (CPU writes demand, GPU reads it to advect agents)
+legible and testable.
+
+---
+
+## 5. Interaction and the editor
+
+The feel of a professional 3D editor. Latency is the enemy of the feeling of power; prefer
+in-world feedback over chrome.
+
+### 5.1 Camera
+
+- Orbit camera (drei) for inspection, with damping, sensible min/max, and framing on
+  selection.
+- Fly camera for cinematic traversal through the streets.
+- Smooth transitions between framed targets; the camera is itself a cinematic instrument.
+
+### 5.2 Selection and manipulation
+
+- Crisp hover and selection on buildings (cluster identity from the reused grouping), roads,
+  and lots. Hover is an in-world highlight (outline or emissive rim), not a tooltip.
+- Transform gizmos for move, rotate, and scale (height) on the selected entity, with
+  immediate geometry response and live shadow/flow re-evaluation.
+- Direct manipulation is the primary edit path. Natural language (the reused EditOp loop) is a
+  secondary, fast path for "make this 40 storeys" or "add a tower here" that resolves to the
+  same EditOp set the gizmos produce.
+- Every manipulation produces an immediate, legible, satisfying response: the shadow moves,
+  the flow reroutes, the skyline changes, all in-world and at interactive latency.
+
+### 5.3 Panels and tools
+
+- A tool palette (select, move, add, rezone, weather, time).
+- A dockable inspector and property panels in a refined dark professional-tool aesthetic with
+  real typographic and spacing discipline (consult the frontend-design skill; design tokens
+  produced in Claude Design per section 9).
+- Panels are DOM overlay (React), not in-canvas, kept minimal so the world is the interface.
+
+---
+
+## 6. Data and city-model layer
+
+The data pipeline is largely the old one, stripped of provenance ceremony.
+
+- Bake, do not fetch. The snapshots in `data/` are the single source; nothing is fetched at
+  build or runtime. The app pre-resolves the city model at build (server component) and hands
+  a slim payload to the client, exactly as today.
+- Reprojection: 3857 to geodetic to local ENU against a computed centroid origin, shared by
+  buildings and roads so they co-register by construction. Unchanged.
+- The simulation city model: per building, the footprint (ENU rings), the measured height,
+  the cluster identity, and a mutable simulation-state slot. Per road edge, the directed
+  geometry, capacity attributes, and a flow-state slot. Origin and source attribution string
+  for the credit line. No per-field provenance wrappers, no confidence bands.
+- User edits live in an overlay over the baked model (reused pattern), so real Toronto and the
+  user's changes stay separable for undo and for the simulated-versus-grounded register.
+
+---
+
+## 7. How it composes
+
+```
+data/ (baked snapshot)
+  -> model layer (load, reproject, group)        [build time, server]
+  -> simulation city model + GPU buffers          [client init]
+       |                                   |
+       v                                   v
+  simulation systems (fixed step)     rendering pipeline (WebGPU + TSL + post)
+       |   ^                               ^
+       |   | edits                         | reads sim buffers, interpolated
+       v   |                               |
+  interaction/editor (gizmos, NL, camera, panels)
 ```
 
-The seam that buys flexibility is the consequence interface (section 8). The typed city model is consequence-agnostic. Each geometry-derived consequence is a plugin implementing one interface. At kickoff you add or emphasize whichever geometry-derived consequence fits the posed problem without touching the data, coordinate, solar, or mutation layers. That is the loaded weapon: the trigger is the consequence plugin, the gun is already built.
+The renderer and the simulation share the WebGPU device and the SoA buffers. The editor
+mutates the model and the simulation responds; the renderer always draws the latest
+interpolated state. Time, weather, and flow are systems on the fixed loop; selection and edits
+are events into it.
 
 ---
 
-## 3. Part 1: data ingestion and the typed city model
+## 8. Rebuild sequence
 
-### The data, concretely
+Smallest shippable units, each a clean conventional commit, from the current repo to the
+first demonstrable milestone and on toward the vision. Plan only; do not start until the
+sequence is approved.
 
-Source is City of Toronto open data, 3D Massing. Footprints plus per-building height in the `EleZ` attribute, LiDAR/photogrammetry-derived, native projection MTM (the "3D Massing (MTM3)" file), metric units. This is the right source: heights are measured, the projection is already metric with low distortion over a single city, and it is recognizable Toronto.
+### Unit 0: demolition and skeleton
 
-Two facts change the plan:
+Remove `src/honesty/`, `src/scene/`, `src/ui/`, the gate scripts as build dependencies, and
+the old `app/page.tsx` wiring. Keep `src/coords/`, `src/solar/`, `src/model/` (to be slimmed),
+`src/network/`, `src/mutation/` (to be reworked), `src/traffic/assignment.ts`, and all of
+`data/`. Decide the build setup per ADR-R02. Stand up an empty WebGPU R3F canvas that clears
+to a graded color and confirms WebGPU init with WebGL2 fallback. Commit.
 
-1. The portal entry is now marked Retired (verified late 2025). Real 2025-vintage data was published from it and is mirrored by third parties (School of Cities PMTiles by Jeff Allen, mapTO's GTHA buildings), so the data is obtainable, but you cannot assume a live, refreshing endpoint. Bake a snapshot now and version it.
-2. Confirm what `EleZ` means before trusting it. The name suggests an elevation (Z above a datum), not necessarily height above the building's own ground. If it is absolute elevation you must subtract ground elevation to get the extrusion height, otherwise every building floats or sinks. This interacts with the terrain decision in section 4. Resolve this in your verification afternoon: pick three buildings of known real height and check whether `EleZ` equals their height or their roof elevation.
+### Unit 1: the city renders, lit and grounded (the first milestone)
 
-### Pipeline: bake, do not fetch (recommended, near-settled by constraints)
+The building city from the baked snapshot as a single `BatchedMesh` (ADR-R09), sitting in a
+world rather than floating on a bare plane: a real PBR ground material, a contact shadow
+grounding each building, and atmospheric fog for depth, under the WebGPU pipeline (PBR
+materials, HDRI image-based lighting, AgX tone mapping, cascaded sun shadows). Orbit camera
+framed on the neighborhood. The sun driven by the existing astronomy-engine vector at a fixed
+art-directed golden-hour instant.
 
-Clip the citywide data to one neighborhood, reproject from MTM to local ENU, stamp each feature with dataset-level provenance, and emit a static asset (GeoJSON for footprints plus a small provenance manifest) committed to the repo. Reasons: the source is retired so a snapshot is the only reproducible option, the demo must work offline on hotel wifi, load is instant, and the provenance is frozen and auditable. The alternative (runtime fetch and reproject in the browser) buys nothing here and adds a live dependency on a retired dataset. I am treating bake-a-snapshot as the recommendation, not an open decision, unless you object.
+The de-risk this milestone exists to prove is the post path specifically: GTAO plus bloom on
+the WebGPU node post pipeline through R3F. That is the thin ice (ADR-R01), more than the PBR and
+IBL, which are standard. The milestone is not done until it holds the performance budget on both
+the WebGPU reference device and the WebGL2 floor device (ADR-R08), and until BatchedMesh under
+TSL node materials is confirmed on both backends.
 
-### The typed model
+This is the right first milestone because it is the smallest thing that delivers the core
+promise and de-risks the hardest claim. When it is done the user orbits a real slice of Toronto
+that looks like an offline render, grounded in a believable world rather than a tech-demo void,
+and asks "this runs in a browser?". Everything after it is additive against a proven visual
+spine.
 
-Provenance is a wrapper on every load-bearing field. Most provenance here is dataset-level and rule-derived, not per-feature from the city: the city does not ship per-building uncertainty, so "measured vs estimated" is a category you assign, and the sigma you attach to each category is a judgment you must source (see section 11, flag B).
+### Unit 2: ground, streets, and surrounding context
 
-```typescript
-type Provenance<T> = {
-  value: T;
-  source: string;   // "Toronto Open Data, 3D Massing"
-  date: string;     // ISO; vintage of the source, not the fetch time
-  confidence: Confidence;
-};
+Extend the world past the data slice so the city does not end at a hard clip edge. A larger
+ground extent, the road surfaces rendered as static street geometry (the network as ground
+detail, before any flow runs on it), and a faded ring of surrounding-city massing or silhouette
+so the neighborhood reads as part of a larger Toronto. Height and distance fog (section 3.4)
+carry the periphery into haze. No simulation yet; this is the static world the dynamic systems
+will inhabit.
 
-type Confidence =
-  | { kind: "measured"; sigma_m: number }     // LiDAR-derived height, sigma in metres
-  | { kind: "estimated"; sigma_m: number }    // derived or assumed, wider sigma
-  | { kind: "hypothetical" };                 // user-injected, no real-world referent
+This lands second, immediately after the lit milestone and before the dynamic systems, because
+a hard clip edge breaks the cinematic illusion the instant the camera pulls back, no matter how
+good the lighting is. Fixing the world's extent is foundational to the look, so it precedes
+time, weather, and flow. The split with Unit 1 is deliberate: Unit 1 grounds each building in
+its immediate surroundings (ground, contact shadow, fog); Unit 2 extends those surroundings
+outward to the horizon. The split with the flow unit is also deliberate: Unit 2 renders the
+streets as static surfaces, the flow unit later puts living traffic on them.
 
-type Building = {
-  id: string;
-  footprint: number[][];             // local ENU metres, outer ring then holes
-  height: Provenance<number>;        // metres above its own base
-  baseElevation: Provenance<number>; // metres; flat-ground v1 may pin to 0 and disclose
-  origin: "toronto-open-data" | "user-edit";
-};
+### Unit 3: time of day, live
 
-type CityModel = {
-  originLatLon: [number, number];    // ENU anchor
-  crsNote: string;                   // "local ENU, metres, origin at <lat,lon>"
-  buildings: Building[];
-  sources: SourceManifest;           // dataset-level provenance for the export footer
-};
-```
+The sun sweep becomes interactive: scrub and play the Toronto clock; sky, fog, light color,
+shadow direction, and night window emissivity all respond. The cheapest, most cinematic
+system, and it makes the static city move.
 
-The `origin` field is load-bearing for honesty: a user-added tower is `hypothetical` and must badge differently from real data everywhere, including the export footer ("this view contains 1 hypothetical structure you added").
+### Unit 4: selection and the editor spine
 
-`[OPEN]` decisions in this part: neighborhood choice (section 10, decision 1).
+Hover and selection on buildings (reused grouping), an in-world highlight, a transform gizmo
+for height, and the reworked EditOp apply path so a building's height changes with an immediate
+shadow response. Natural-language height edit reattached as the secondary path.
 
----
+### Unit 5: the network and live flow
 
-## 4. Part 2: coordinates, scene, and the receiver problem
+Render the road network in the new pipeline; run the BPR flow field on the reused engine; spawn
+instanced vehicle agents advected along edges on GPU compute, density and speed from the flow.
+The headline "alive" system. Rezoning or adding capacity visibly reroutes traffic.
 
-ENU anchored at the centroid, metric, is settled and is now cheap because the source is already metric MTM: recenter and you are done, the distortion argument is satisfied without a heavy transform. Sun directions are unit vectors in this frame.
+### Unit 6: weather and mood
 
-Merged geometry, single directional light, PCF soft shadows, manual `needsUpdate` on sun move is settled (section 1). Buildings are both shadow casters and receivers (self-shadowing and shadows on neighbors are the point).
+Clear, overcast, and rain as art-directed presets: wet-road SSR, rain particles, mood-specific
+LUT and fog. The look gains range.
 
-The open question is what the ground is. Shadows have to fall on something, and Toronto is not perfectly flat.
+### Unit 7: growth and consequence chains
 
-`[OPEN]` decision, terrain and base elevation (section 10, decision 2). Three options:
+Adding or rezoning triggers legible change over time (lots fill, heights rise, lights come on),
+closing the reshape-and-watch loop into the full vision.
 
-- Flat ground plane at Z=0, buildings extruded from 0. Simplest. Wrong where the neighborhood slopes, and wrong if `EleZ` is an absolute elevation. Defensible only if the chosen neighborhood is near-flat, and only if flat-ground is disclosed in the do-NOT-measure list.
-- Per-building base elevation from data, buildings sit at correct Z, ground still a flat plane. Partial: building-to-building shadows improve, ground-shadow on slopes still wrong.
-- Full terrain mesh from a DEM. Correct, but pulls in another dataset and more work.
-
-My lean: flat ground for v1 and let the honesty layer absorb the simplification by naming "terrain and ground slope" in the do-NOT-measure list. This is on-brand rather than embarrassing: the tool that says what it does not model is allowed to not model terrain as long as it says so, and a flat plane is fine on a flat downtown site. This decision is downstream of the neighborhood choice and the `EleZ` semantics check, so make those first.
-
----
-
-## 5. Part 3: solar and shadow core (the hero)
-
-This is the subsystem that has to be bulletproof. It has five concerns.
-
-### Sun vector engine
-
-`[FLAG, real problem with a locked choice]` You locked SunCalc for the live slider and a separate validated SPA implementation for batch and validation. The problem is that this ships two different solar engines, so the shadows the judge watches sweep in real time are computed by a different, less accurate algorithm than the shadows you validated. SunCalc does not model atmospheric refraction and uses simplified position formulas. When a judge asks "how do you know your shadows are right" and the honest answer is "the ones we validated are not the ones on screen," the honesty brand takes the hit.
-
-Option I want you to consider: use `astronomy-engine` (Don Cross) for both the live path and validation. It is high accuracy, has an explicit refraction option, and is fast enough for an interactive slider. That collapses two engines into one, removes the live-versus-validated discrepancy, and gives you refraction for free on the live path. Keep NREL SPA only as an external oracle you check against, not as a second runtime engine. This is the decision in section 10, decision 3. If you have a reason to keep SunCalc (bundle size, familiarity), say so and I will design around the discrepancy by labeling the live view as indicative and the export as validated.
-
-### Time, the most common shipped bug
-
-Pin all time math to the `America/Toronto` IANA zone regardless of the client's locale, and represent the scrub position as a zoned instant, never a naive `Date`. The challenge window (June 8 to 19) is EDT, UTC-4.
-
-Why naive noon is visibly wrong, so we get it right on purpose: the shadow at 12:00 clock time does not point due north in Toronto. Toronto sits near 79.4 W, while EDT is referenced to 60 W, so the sun reaches the meridian roughly an hour-plus after clock noon, shifted further by the equation of time. A correct engine handles this if you feed it the right instant and longitude. The bug is never in the astronomy, it is in constructing the instant: using the browser's timezone instead of Toronto's, or building a `Date` from a local string. Use Temporal or a zoned date library, construct the instant explicitly in `America/Toronto`, and DST is handled.
-
-### Low sun angles, refraction, and false precision
-
-Shadow length is `h / tan(altitude)`. Its sensitivity to altitude error is `h / sin^2(altitude)`, which blows up near the horizon. At 10 degrees altitude a half-degree error in the sun's altitude moves a 100 m building's shadow by roughly 30 m. Low sun is exactly the regime people fight about (early morning and late afternoon shadows on parks and homes) and exactly where any solar-position error and atmospheric refraction matter most. Two consequences:
-
-- Model refraction (another reason to prefer astronomy-engine on the live path).
-- Below a low-altitude threshold, stop quoting a precise shadow length. Either widen the band enormously or switch to a qualitative "long shadow" state. This is the "refuse false precision" rule made literal in the one place it bites hardest.
-
-### Two-track shadows: rendered versus measured
-
-This is the subtle architectural point (section 11, flag C). Render-based PCF shadows are great for the live pretty sweep but are not a trustworthy measurement: at city scale a single shadow camera over hundreds of metres plus near-horizontal light at low sun gives you acne, peter-panning, and resolution-limited edges. If the rendered shadow visibly disagrees with the number you print, the honesty tool is dead.
-
-So the source of truth for any measured claim is not the shadow map. It is a geometric shadow-polygon computation: project each footprint along the sun vector onto the ground plane (and clip against receivers), which is exactly what a planning shadow study does, and is exact given the geometry. Architecture:
-
-- Rendered PCF shadows drive the live, interactive, beautiful sweep.
-- Geometric shadow polygons drive any measured number, the confidence band, and the export.
-- The UI reconciles them: what you see is the render, what we measured is the polygon, and they are kept close enough that the difference never reads as a contradiction on screen.
-
-### Confidence band methodology
-
-The band must be a defined, defensible computation, not a vibe. Scope it to height-only uncertainty for v1 and declare that scope (footprint and position error excluded, stated in the do-NOT-measure list). Method: per timestep, take each building's height distribution from its `Confidence.sigma_m`, and either Monte Carlo sample to get a shadow envelope or propagate analytically through `h / tan(altitude)`. The band represents the spread of measured-shadow extent given height uncertainty at that sun position, which means the band is naturally wider at low sun. Storey-to-metre conversion for user-added buildings (roughly 3 to 3.5 m residential, more for commercial) is itself an estimate and feeds the band as additional sigma, badged estimated.
-
-### Validation
-
-`[Reframed, see section 11, flag A]` Validate the solar engine, not a consultant's PDF. Check the sun vector against NREL SPA or NOAA tables for Toronto across a year of dates and times: this is rigorous, fast, and gives the bulletproof answer. Add an analytic geometry check: a vertical stick of height h at altitude a casts exactly `h / tan(a)`, verify the polygon engine reproduces it to the millimetre. Treat "polygon-for-polygon against a published Toronto study" as a stretch overlay for the pitch, not a gating requirement, for the reasons in flag A.
-
-`[OPEN]` decisions in this part: solar engine (decision 3).
+Later units: pedestrian agents, richer facade and material variation, cinematic camera paths
+and a capture/record mode, additional neighborhoods.
 
 ---
 
-## 6. Part 4: natural-language mutation layer
+## 9. Design artifacts to commission (Claude Design)
 
-The structured-output part is easy. The hard part is grounding references to real entities, which is why the model gets entity IDs and never computes geometry.
+Produce these before or alongside the build and hand them back. Be specific:
 
-```typescript
-type EditOp =
-  | { op: "AddBuilding"; at: [number, number]; heightStoreys: number; use?: BuildingUse }
-  | { op: "ModifyBuilding"; id: string; heightStoreys?: number; use?: BuildingUse }
-  | { op: "RemoveBuilding"; id: string };
-// Bounded numerics enforced at parse time (e.g. 1..120 storeys).
-// id must reference an existing building. "at" comes from a user click in v1,
-// not from free-text spatial reasoning.
-```
-
-Flow: pre-resolve a scene-description context block (a compact list of nearby entity IDs, their use, approximate size, and the clicked location) and hand it to the model alongside the user text. The model emits an `EditOp` against that context. Parse and validate (bounded numerics, ID existence). Render a preview as ghost geometry with its shadow. Show a diff. Apply commits to the model with `origin: "user-edit"` and `confidence: hypothetical`.
-
-`[OPEN]` decision, the placement model (section 10, decision 4). "Add a 30-storey tower on this lot" has two parts: the what (30 storeys, tower, residential) and the where ("this lot"). Free-text resolution of "this lot," "the corner," "next to the school" is a rabbit hole, and lots are not even in the footprint data (parcels are a separate dataset). My lean: click-to-place sets the where, NL sets the what. The user clicks a location, then types the change. This is robust, demo-friendly, and sidesteps both spatial reasoning and the parcel dependency. Pure-text placement is a post-hackathon problem.
-
-The honesty hook here is non-negotiable: a user-added building is hypothetical everywhere, badged distinctly, counted in the export footer. The mutation log also gives you undo and a clean separation between real Toronto and the user's what-if.
-
----
-
-## 7. The honesty layer (cross-cutting)
-
-This threads through every part above and is the differentiator, so it is not a UI afterthought.
-
-- Per-building data-quality badges: measured vs estimated vs hypothetical, driven by `Confidence.kind`.
-- Per-consequence confidence bands tied to input quality, computed as in section 5, never a single number.
-- A visible do-NOT-measure list, treated as a feature. It names what the tool refuses to fake: traffic change, displacement, property values, human movement, plus the v1 engineering simplifications you chose to disclose (terrain and ground slope if you take the flat-ground option, footprint and position error, anything else cut). Naming the refusals is the strongest proof of honesty and the thing that survives a hostile judge.
-- Provenance-stamped export. The footer is baked into the image artifact, not drawn in surrounding UI, so it survives a screenshot pasted into a council slide. Footer carries data sources and dates, the height-confidence breakdown for what is shown, the count of hypothetical structures, and the do-NOT-measure summary.
-- Traffic, if shown at all, is a factual readout of existing Toronto open-data counts with source and date, never a prediction of the change. No confidence score rescues a behavioral prediction.
+- Mood and lighting targets. Three to five reference frames of the city at golden hour, blue
+  hour, overcast day, and clear night. For each: sun color and angle, sky and fog color, key
+  ambient ratio, and the overall grade. These set the art direction sections 3.3 and 3.4 tune
+  against.
+- The color and type system. A dark professional-tool palette (surfaces, hairlines, ink
+  levels, accent, semantic colors for selection and simulated-versus-grounded), and a type
+  scale with one display and one UI family, sizes, weights, and spacing tokens. This replaces
+  the old `src/ui/theme.ts`.
+- The editor interface. Layout for the tool palette, the dockable inspector and property
+  panels, and the time/weather controls. Docking behavior, panel anatomy, empty and selected
+  states.
+- Gizmo and selection design. The visual language of hover, selection, and the transform
+  gizmo in-world: outline/rim treatment, gizmo handles and colors, the height-drag affordance,
+  and the simulated-versus-grounded visual register (how a hypothetical building reads as
+  hypothetical without a badge).
+- Per-mood LUTs (or the color targets to derive them) for section 3.4 stage 8.
 
 ---
 
-## 8. The consequence interface (the problem-flexibility seam)
+## 10. Risks, flagged once
 
-Every geometry-derived consequence implements one interface and returns a band plus provenance, never a bare number. Shadow is the reference implementation. This is what lets you point the spine at the kickoff problem.
-
-```typescript
-type Band = { low: number; mid: number; high: number; unit: string };
-
-type ConsequenceResult = {
-  id: string;                 // "shadow" | "far" | "walkability" | ...
-  band: Band;
-  provenance: string[];       // which inputs and their confidence drove the band
-  notModeledNote?: string;    // honesty hook
-};
-
-interface Consequence {
-  id: string;
-  compute(model: CityModel, ctx: ComputeContext): ConsequenceResult;
-}
-```
-
-Honest cost accounting for the candidate second consequence, because "cheap" is not uniform:
-
-- Density / FAR is the only truly cheap one, and even it needs a site area. Avoid the parcel dataset by using the clicked or drawn lot as the site, or report gross added floor area, and disclose the choice. Floor area from footprint area times storeys, band from height and storey-conversion uncertainty.
-- Sky view factor is medium: hemispherical raycasting from a point against surrounding geometry. Geometry-derived and honest, but not free.
-- Walkability by network distance is not cheap: it needs a street-network graph (Toronto Centreline or OSM) and a routing engine. Treat it as a stretch, not a freebie.
-
-`[OPEN]` decision, whether and which second consequence ships (section 10, decision 5). My lean: FAR if any, and only after the shadow path is demo-solid.
-
----
-
-## 9. Hard rules mapped to where they are enforced
-
-| Hard rule | Enforced in |
-| --- | --- |
-| Real measured Toronto heights | Part 1, baked snapshot, `EleZ` after semantics check |
-| Shadow correct, validated solar | Part 3, single solar engine, SPA oracle, analytic geometry check |
-| Correct TZ/DST | Part 3, zoned instants in America/Toronto |
-| Refuse false precision | Part 3, low-angle policy, band not number |
-| Only honestly-confident consequences | Part 8 interface, behavioral ones excluded by construction |
-| Traffic as readout only | Part 7, factual counts, never prediction |
-| Survive a screenshot | Part 7, provenance baked into the artifact |
-| Confidence bands not numbers | Parts 5, 7, 8, `Band` is the return type |
-
----
-
-## 10. Open decisions awaiting your call
-
-1. Neighborhood. Criteria: recognizable to Waterloo-region judges, a notable public park or open space adjacent to tall or mid-rise buildings for the "shadow falls on a real park" money shot, real measured heights, near-flat if you take the flat-ground option, and a building count the renderer is comfortable with. Candidate directions: the St. Lawrence / St. James Park area (recognizable, real towers, a real park, dramatic shadows), Downtown Yonge around Sankofa Square (very recognizable, dense), or a tower cluster like North York Centre or Yonge-Eglinton. My lean is a downtown site with a clear park next to towers. Your call.
-2. Terrain and base elevation (section 4). Flat plane vs per-building base elevation vs DEM. My lean: flat plane, disclosed in the do-NOT-measure list, contingent on a flat neighborhood and the `EleZ` check.
-3. Solar engine (section 5). Keep SunCalc plus separate SPA as locked, or consolidate on astronomy-engine for both with SPA as an external oracle. My lean: consolidate.
-4. Placement model (section 6). Click-to-place for the where plus NL for the what, vs free-text placement. My lean: click plus NL.
-5. Second consequence (section 8). None for v1, FAR, or something else. My lean: FAR, only after shadow is solid.
-
-Minor, not blocking: the mutation model should be one with strict structured output or forced tool use, and the `EditOp` schema is provider-agnostic.
-
----
-
-## 11. The three places difficulty is underestimated
-
-Flag A, validating shadows against a published Toronto study is a mini research project, not a checkbox. Published planning shadow studies use standardized conventions (equinox test dates, fixed time windows and steps, often no refraction, sometimes a different solar algorithm), they use the developer's proprietary 3D model rather than open data, and they publish raster figures in PDFs, not machine-readable shadow polygons. To match polygon-for-polygon you would have to find a study that publishes enough detail, rebuild its exact scene from open data that may differ from their model, and replicate its exact solar conventions. That is days of work with a real chance of no clean match. The rigorous and achievable answer is to validate the solar engine against NREL SPA or NOAA tables and the polygon engine against the analytic `h / tan(altitude)` identity, and treat any study overlay as a qualitative pitch aid. Reframe the validation plan now so you are not chasing a consultant PDF in demo week.
-
-Flag B, the confidence band is itself a modeling commitment, and the input uncertainty it rests on is mostly not in the data. The honesty brand depends on the band being real, but the city does not ship per-building height uncertainty. "Measured vs estimated" is a category you assign, and the sigma you attach to each category is a judgment you must source and defend (LiDAR vertical accuracy figures, for instance). Then the band is a nonlinear propagation of that sigma through `h / tan(altitude)`, sun-angle-dependent and time-varying. If you hand-wave either the input sigma or the propagation, you have reintroduced the exact false rigor you are trying to avoid, one level up. Write the uncertainty model down explicitly, cite its inputs, keep its scope narrow (height-only for v1), and state the scope. The band's credibility is the whole product.
-
-Flag C, rendered shadows and measured shadows are two different things, and you are confident on the rendering side. Your R3F experience means the PCF shadow map will look good, which is the trap. At city scale with near-horizontal light at low sun, the shadow map gives acne, peter-panning, and resolution-limited edges, and if the rendered shadow visibly disagrees with the number you print, the honesty tool dies on stage. The architecture in section 5 keeps two tracks: rendered PCF for the live sweep, geometric shadow polygons as the source of truth for every measured claim and the export. Budget time for reconciling them so the seam never reads as a contradiction. This is the one most likely to bite precisely because the rendering feels solved.
-
----
-
-## 12. Scope: what v1 does NOT do
-
-Engineering cuts: one neighborhood only, no neighborhood switching. No parcel dataset (lots come from clicks). No street network or routing unless walkability is explicitly chosen. No free-text spatial placement. Likely no terrain mesh (flat plane, disclosed). No interior floors, no setbacks, no architectural detail beyond extruded footprints. No accounts, no persistence beyond the session, no multi-user.
-
-Honest refusals, the do-NOT-measure list: traffic change, displacement, property-value change, human movement and any behavioral simulation. Plus the disclosed v1 simplifications: ground slope and terrain, footprint and position error, storey-to-metre assumptions for user-added buildings.
-
-The failure mode is a sprawling half-built thing. The five-second moment (type a change, watch the shadow fall on a real Toronto park, see the honest badges) is the entire project. Everything not serving that moment is cut.
-
----
-
-## 13. Pre-kickoff vs at-kickoff
-
-Build before June 8: the full engine spine. Baked neighborhood snapshot with provenance, typed city model, ENU coordinate and scene core, solar and shadow core with both tracks and the validation harness, the mutation layer with click-plus-NL and preview-diff-apply, the honesty core with badges, bands, the do-NOT-measure list, and provenance-stamped export, and the shadow reference implementation of the consequence interface.
-
-Decide at kickoff: which neighborhood best fits the posed problem, which consequence plugins to surface or add, and the demo narrative. Because the consequence interface is the only thing that changes, you arrive with a loaded weapon and aim it once the target appears.
+- The post stack on WebGPU through R3F, not WebGPU itself. WebGPU browser support is broad in
+  2026; the thin ice is the node-based post pipeline (GTAO, SSR, TAA as TSL nodes), which is
+  newer, has fewer built-in effects, and far less R3F integration than the mature pmndrs WebGL
+  `EffectComposer` stack engineers reach for by reflex. The WebGL2 fallback does not get this
+  look for free: it is the same node pipeline minus its compute-dependent passes, a materially
+  lesser result accepted by decision (ADR-R01), not a separate pmndrs pipeline. Mitigation:
+  every post stage is a toggle, Unit 1 exists specifically to prove the GTAO-plus-bloom post path
+  before anything is built on it, and the performance gate (ADR-R08) sizes the stack to the frame
+  budget on both paths.
+- Determinism on GPU compute. Floating-point reductions on the GPU are not bit-identical
+  across hardware. The fixed-timestep loop keeps the simulation stable, but exact determinism
+  is not promised for GPU systems. This is acceptable: the product is a creative simulator, not
+  a forecasting tool, and the one line we hold is register, not reproducibility.
