@@ -1,28 +1,28 @@
 "use client";
 
 import { Canvas } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
 import { useMemo } from "react";
 import { createRenderer } from "./createRenderer";
 import { pickBackend, detectWebGPU, type Backend } from "./pickBackend";
+import { Scene } from "./Scene";
+import { PerfStats } from "./PerfStats";
+import type { CityPayload } from "./types";
 
-// Graded clear: a deep, slightly cool studio background so the empty canvas
-// reads as an intentional render surface, not a blank page. The art-directed
-// mood presets arrive with the look system (Claude Design); this is the
-// neutral baseline the WebGPU pipeline is stood up against in Unit 0.
 const CLEAR_COLOR = "#0b0d10";
 
-export default function Viewport() {
+export default function Viewport({ payload }: { payload: CityPayload }) {
   const backend = useMemo<Backend>(() => pickBackend(detectWebGPU()), []);
 
   return (
     <div style={{ position: "fixed", inset: 0 }}>
       <Canvas
-        camera={{ position: [60, 45, 60], fov: 45, near: 0.1, far: 5000 }}
+        shadows
+        camera={{ position: [600, 450, 600], fov: 45, near: 1, far: 20000 }}
         gl={(props) => createRenderer(props as Record<string, unknown>)}
       >
         <color attach="background" args={[CLEAR_COLOR]} />
-        <OrbitControls enableDamping dampingFactor={0.08} />
+        <Scene payload={payload} />
+        <PerfStats />
       </Canvas>
       <BackendBadge backend={backend} />
     </div>

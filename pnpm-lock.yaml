@@ -35,6 +35,9 @@ importers:
       react-dom:
         specifier: ^19.0.0
         version: 19.2.7(react@19.2.7)
+      stats-gl:
+        specifier: ^4.1.0
+        version: 4.1.0(three@0.184.0)
       three:
         specifier: ^0.184.0
         version: 0.184.0
@@ -1194,6 +1197,14 @@ packages:
       '@types/three': '*'
       three: '*'
 
+  stats-gl@4.1.0:
+    resolution: {integrity: sha512-A0aw+njfFtowIJ5tCbCxKBRR7oflVmGEjdXfMI7IAc/fDTdms4eIKSaLDWL222XCrfQdT49VE19JgKGDQmz0yw==}
+    peerDependencies:
+      three: '*'
+    peerDependenciesMeta:
+      three:
+        optional: true
+
   stats.js@0.17.0:
     resolution: {integrity: sha512-hNKz8phvYLPEcRkeG1rsGmV5ChMjKDAWU7/OJJdDErPBNChQXxCo3WZurGpnWc6gZhAzEPFad1aVgyOANH1sMw==}
 
@@ -2318,6 +2329,10 @@ snapshots:
   stats-gl@2.4.2(@types/three@0.184.1)(three@0.184.0):
     dependencies:
       '@types/three': 0.184.1
+      three: 0.184.0
+
+  stats-gl@4.1.0(three@0.184.0):
+    optionalDependencies:
       three: 0.184.0
 
   stats.js@0.17.0: {}

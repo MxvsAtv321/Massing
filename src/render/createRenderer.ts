@@ -19,6 +19,10 @@ export async function createRenderer(
     antialias: true,
     forceWebGL: backend === "webgl2",
   } as ConstructorParameters<typeof THREE.WebGPURenderer>[0]);
+  // AgX is the look-defining tone curve (ADR-R04). In 1a it runs on the default
+  // render path; in 1b it moves into the node post output.
+  renderer.toneMapping = THREE.AgXToneMapping;
+  renderer.toneMappingExposure = 1.0;
   await renderer.init();
   return renderer;
 }
