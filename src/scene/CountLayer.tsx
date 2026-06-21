@@ -65,15 +65,20 @@ export function CountLayer({
 }
 
 const tooltip: React.CSSProperties = {
-  background: "rgba(10,10,12,0.92)",
-  border: "1px solid rgba(255,255,255,0.18)",
-  borderRadius: 6,
-  padding: "5px 8px",
-  fontFamily: "system-ui, sans-serif",
+  background: "rgba(20,19,15,0.94)",
+  border: "1px solid var(--hairline-2)",
+  borderRadius: 8,
+  padding: "6px 9px",
+  fontFamily: "var(--font-sans), system-ui, sans-serif",
   fontSize: 11,
-  color: "#e8e0d0",
+  color: "var(--ink)",
   whiteSpace: "nowrap",
-  transform: "translate(-50%, -130%)",
+  boxShadow: "0 6px 20px -6px rgba(0,0,0,0.6)",
+  transform: "translate(-50%, -135%)",
 };
-const tipName: React.CSSProperties = { fontWeight: 600, marginBottom: 2 };
-const tipRow: React.CSSProperties = { color: "#b8b0a4" };
+const tipName: React.CSSProperties = { fontWeight: 600, marginBottom: 3 };
+const tipRow: React.CSSProperties = {
+  color: "var(--ink-3)",
+  fontFamily: "var(--font-mono), ui-monospace, monospace",
+  fontSize: 10.5,
+};

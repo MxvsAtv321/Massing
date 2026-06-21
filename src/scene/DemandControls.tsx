@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, type CSSProperties } from "react";
 import type { Place, ODFlow, FlowValidation } from "../traffic/demand";
+import { Panel } from "../ui/Panel";
+import { c, font, radius, ghostButton, primaryButton } from "../ui/theme";
 
 type Props = {
   places: Place[];
@@ -46,44 +48,32 @@ export function DemandControls({
   };
 
   return (
-    <div style={styles.panel}>
-      <div style={styles.header}>Traffic demand</div>
+    <Panel eyebrow="traffic demand" style={{ top: 20, right: 20, width: 270 }}>
       <div style={styles.disclosure}>
-        Demand is an assumption you set. This tool never predicts the demand a development
-        creates.
+        Demand is an assumption you set. This tool never predicts the demand a development creates.
       </div>
 
-      <div style={styles.field}>
-        <label style={styles.fieldLabel}>From</label>
-        <select
-          value={pendingOrigin ?? ""}
-          onChange={(e) => setOrigin(e.target.value || null)}
-          style={styles.select}
-        >
-          <option value="">click a gateway or pick…</option>
+      <Field label="From">
+        <select value={pendingOrigin ?? ""} onChange={(e) => setOrigin(e.target.value || null)} style={styles.select}>
+          <option value="">click a gateway or pick</option>
           {places.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label} ({p.side})
             </option>
           ))}
         </select>
-      </div>
+      </Field>
 
-      <div style={styles.field}>
-        <label style={styles.fieldLabel}>To</label>
-        <select
-          value={pendingDestination ?? ""}
-          onChange={(e) => setDestination(e.target.value || null)}
-          style={styles.select}
-        >
-          <option value="">click a gateway or pick…</option>
+      <Field label="To">
+        <select value={pendingDestination ?? ""} onChange={(e) => setDestination(e.target.value || null)} style={styles.select}>
+          <option value="">click a gateway or pick</option>
           {places.map((p) => (
             <option key={p.id} value={p.id}>
               {p.label} ({p.side})
             </option>
           ))}
         </select>
-      </div>
+      </Field>
 
       <div style={styles.addRow}>
         <input
@@ -93,156 +83,110 @@ export function DemandControls({
           value={tripsText}
           onChange={(e) => setTripsText(e.target.value)}
           style={styles.tripsInput}
+          aria-label="Trips per hour"
         />
         <span style={styles.unit}>trips/hr</span>
-        <button onClick={handleAdd} style={styles.addBtn}>
+        <button onClick={handleAdd} style={primaryButton}>
           Add
         </button>
       </div>
       {error && <div style={styles.error}>{error}</div>}
 
       {flows.length > 0 && (
-        <div style={styles.list}>
+        <div style={styles.list} className="scroll-thin">
           {flows.map((f) => (
             <div key={f.id} style={styles.flowRow}>
               <span style={styles.flowText}>
-                {labelOf(f.fromPlaceId)} <span style={styles.arrow}>{"->"}</span>{" "}
-                {labelOf(f.toPlaceId)}
+                {labelOf(f.fromPlaceId)} <span style={styles.arrow}>{"→"}</span> {labelOf(f.toPlaceId)}
               </span>
-              <span style={styles.flowTrips}>{f.tripsPerHour}/hr</span>
-              <button
-                onClick={() => removeFlow(f.id)}
-                style={styles.removeBtn}
-                title="Remove"
-              >
-                ✕
+              <span style={styles.flowTrips}>{f.tripsPerHour}</span>
+              <button onClick={() => removeFlow(f.id)} style={styles.remove} title="Remove" aria-label="Remove flow">
+                &times;
               </button>
             </div>
           ))}
           <div style={styles.totalRow}>
             <span>{flows.length} flows</span>
-            <span>{totalTrips}/hr total</span>
+            <span>{totalTrips} trips/hr</span>
           </div>
         </div>
       )}
 
       <div style={styles.actions}>
-        <button onClick={loadExample} style={styles.secondaryBtn}>
+        <button onClick={loadExample} style={{ ...ghostButton, flex: 1 }}>
           Load example
         </button>
-        <button onClick={clearFlows} style={styles.secondaryBtn} disabled={flows.length === 0}>
-          Clear all
+        <button onClick={clearFlows} style={{ ...ghostButton, flex: 1, opacity: flows.length === 0 ? 0.4 : 1 }} disabled={flows.length === 0}>
+          Clear
         </button>
       </div>
+    </Panel>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={styles.field}>
+      <label style={styles.fieldLabel}>{label}</label>
+      {children}
     </div>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  panel: {
-    position: "fixed",
-    top: 20,
-    right: 20,
-    width: 280,
-    background: "rgba(10,10,12,0.84)",
-    backdropFilter: "blur(8px)",
-    borderRadius: 10,
-    padding: "12px 14px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    color: "#e8e0d0",
-    fontFamily: "system-ui, sans-serif",
-    fontSize: 12,
-    zIndex: 10,
-    userSelect: "none",
-  },
-  header: {
-    fontSize: 10,
-    color: "#888",
-    textTransform: "uppercase",
-    letterSpacing: "0.06em",
-  },
+const styles: Record<string, CSSProperties> = {
   disclosure: {
+    fontFamily: font.sans,
     fontSize: 11,
-    color: "#7ec8e3",
-    lineHeight: 1.45,
-    background: "rgba(126,200,227,0.08)",
-    borderLeft: "2px solid rgba(126,200,227,0.5)",
-    padding: "6px 8px",
-    borderRadius: 4,
+    color: c.demand,
+    lineHeight: 1.5,
+    background: "color-mix(in srgb, var(--demand) 8%, transparent)",
+    borderLeft: `2px solid color-mix(in srgb, var(--demand) 55%, transparent)`,
+    padding: "7px 9px",
+    borderRadius: 5,
+    marginBottom: 9,
   },
-  field: { display: "flex", flexDirection: "column", gap: 3 },
-  fieldLabel: { fontSize: 10, color: "#999", textTransform: "uppercase", letterSpacing: "0.04em" },
+  field: { display: "flex", flexDirection: "column", gap: 3, marginBottom: 7 },
+  fieldLabel: { fontFamily: font.mono, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", color: c.ink3 },
   select: {
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    borderRadius: 6,
-    color: "#f0ece4",
-    padding: "5px 8px",
+    fontFamily: font.sans,
     fontSize: 12,
+    color: c.ink,
+    background: "rgba(255,255,255,0.05)",
+    border: `1px solid ${c.hairline2}`,
+    borderRadius: radius.sm,
+    padding: "5px 8px",
     outline: "none",
+    colorScheme: "dark",
   },
-  addRow: { display: "flex", alignItems: "center", gap: 6 },
+  addRow: { display: "flex", alignItems: "center", gap: 7, marginTop: 2 },
   tripsInput: {
-    width: 78,
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    borderRadius: 6,
-    color: "#f0ece4",
-    padding: "5px 8px",
+    width: 76,
+    fontFamily: font.mono,
     fontSize: 12,
+    color: c.ink,
+    background: "rgba(255,255,255,0.05)",
+    border: `1px solid ${c.hairline2}`,
+    borderRadius: radius.sm,
+    padding: "5px 8px",
     outline: "none",
   },
-  unit: { fontSize: 11, color: "#999", flex: 1 },
-  addBtn: {
-    background: "rgba(126,200,227,0.20)",
-    border: "1px solid rgba(126,200,227,0.45)",
-    borderRadius: 6,
-    color: "#bfe6f3",
-    padding: "5px 14px",
-    fontSize: 12,
-    cursor: "pointer",
-  },
-  error: { color: "#e07060", fontSize: 11, lineHeight: 1.4 },
+  unit: { fontFamily: font.mono, fontSize: 10, color: c.ink3, flex: 1 },
+  error: { fontFamily: font.sans, fontSize: 11, color: c.bad, marginTop: 6, lineHeight: 1.4 },
   list: {
     display: "flex",
     flexDirection: "column",
     gap: 4,
-    maxHeight: 200,
+    maxHeight: 188,
     overflowY: "auto",
-    borderTop: "1px solid rgba(255,255,255,0.10)",
-    paddingTop: 6,
+    borderTop: `1px solid ${c.hairline}`,
+    marginTop: 10,
+    paddingTop: 8,
   },
-  flowRow: { display: "flex", alignItems: "center", gap: 6 },
-  flowText: { flex: 1, fontSize: 11, color: "#d8d0c4" },
-  arrow: { color: "#7ec8e3" },
-  flowTrips: { fontSize: 11, color: "#e8e0d0", fontVariantNumeric: "tabular-nums" },
-  removeBtn: {
-    background: "transparent",
-    border: "none",
-    color: "#888",
-    cursor: "pointer",
-    fontSize: 12,
-    padding: "0 2px",
-    lineHeight: 1,
-  },
-  totalRow: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontSize: 10.5,
-    color: "#999",
-    marginTop: 2,
-  },
-  actions: { display: "flex", gap: 8 },
-  secondaryBtn: {
-    flex: 1,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 6,
-    color: "#c8c0b8",
-    padding: "5px 0",
-    fontSize: 11,
-    cursor: "pointer",
-  },
+  flowRow: { display: "flex", alignItems: "center", gap: 7 },
+  flowText: { flex: 1, fontFamily: font.sans, fontSize: 11, color: c.ink2 },
+  arrow: { color: c.demand },
+  flowTrips: { fontFamily: font.mono, fontSize: 11, color: c.ink, fontVariantNumeric: "tabular-nums" },
+  remove: { background: "transparent", border: "none", color: c.ink3, cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px" },
+  totalRow: { display: "flex", justifyContent: "space-between", fontFamily: font.mono, fontSize: 9.5, letterSpacing: "0.04em", color: c.ink3, marginTop: 3 },
+  actions: { display: "flex", gap: 8, marginTop: 11 },
 };

@@ -4,7 +4,6 @@ import type { CSSProperties, ReactNode } from "react";
 import { c, font, radius } from "./theme";
 
 const base: CSSProperties = {
-  position: "fixed",
   background: c.surface,
   backdropFilter: "var(--blur)",
   WebkitBackdropFilter: "var(--blur)",
@@ -49,6 +48,7 @@ export function Panel({
   accessory,
   padding = "12px 14px 13px",
   delay = 0,
+  inFlow = false,
 }: {
   children: ReactNode;
   style?: CSSProperties;
@@ -56,9 +56,19 @@ export function Panel({
   accessory?: ReactNode;
   padding?: string | number;
   delay?: number;
+  inFlow?: boolean;
 }) {
   return (
-    <div className="panel-rise" style={{ ...base, padding, animationDelay: `${delay}ms`, ...style }}>
+    <div
+      className="panel-rise"
+      style={{
+        ...base,
+        position: inFlow ? "relative" : "fixed",
+        padding,
+        animationDelay: `${delay}ms`,
+        ...style,
+      }}
+    >
       {eyebrow && (
         <div style={eyebrowRow}>
           <span style={tick} />

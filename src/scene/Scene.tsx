@@ -481,9 +481,10 @@ export function Scene({
 
       <DoNotMeasurePanel />
 
-      <NetworkReadout stats={networkStats} />
-
-      {showFlow && flow && <FlowReadout flow={flow} />}
+      <div style={styles.bottomLeft}>
+        <NetworkReadout stats={networkStats} />
+        {showFlow && flow && <FlowReadout flow={flow} />}
+      </div>
 
       {/* Bottom-right: view console + legend + export */}
       <div style={styles.bottomRight}>
@@ -521,6 +522,17 @@ export function Scene({
 }
 
 const styles: Record<string, React.CSSProperties> = {
+  bottomLeft: {
+    position: "fixed",
+    bottom: 22,
+    left: 20,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 8,
+    zIndex: 10,
+    userSelect: "none",
+  },
   bottomRight: {
     position: "fixed",
     bottom: 22,

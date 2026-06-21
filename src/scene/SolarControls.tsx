@@ -133,7 +133,14 @@ const styles: Record<string, CSSProperties> = {
   dotSep: { color: c.hairline2 },
   lowSun: { fontFamily: font.sans, fontSize: 11, color: c.estimated, fontStyle: "italic" },
   sliderRow: { display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 2 },
-  slider: { flex: 1 },
+  slider: {
+    flex: 1,
+    WebkitAppearance: "none",
+    appearance: "none",
+    height: 6,
+    borderRadius: 999,
+    cursor: "pointer",
+  },
   endLabel: {
     fontFamily: font.mono,
     fontSize: 9.5,
