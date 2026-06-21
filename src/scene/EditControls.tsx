@@ -134,7 +134,7 @@ export function EditControls({
 const styles: Record<string, React.CSSProperties> = {
   panel: {
     position: "fixed",
-    top: 20,
+    top: 84,
     left: 20,
     background: "rgba(10,10,12,0.80)",
     backdropFilter: "blur(8px)",

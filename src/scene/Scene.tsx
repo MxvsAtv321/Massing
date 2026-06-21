@@ -31,6 +31,7 @@ import { ValidationReadout, type CountsProvenanceSlice } from "./ValidationReado
 import { useDemandScenario } from "../traffic/useDemandScenario";
 import { useFlow } from "../traffic/useFlow";
 import { matchCountsToEdges, validateFlow, type CountStation } from "../traffic/validation";
+import { Wordmark } from "../ui/Wordmark";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
@@ -428,6 +429,8 @@ export function Scene({
         <CameraRig bounds={bounds} />
         <CanvasCapture onCapture={captureCanvas} />
       </Canvas>
+
+      <Wordmark />
 
       <SolarControls sun={sun} />
 
