@@ -37,6 +37,7 @@ export function Lighting({
     return () => {
       cancelled = true;
       scene.environment = null;
+      scene.background = null;
     };
   }, [gl, scene, sun]);
 

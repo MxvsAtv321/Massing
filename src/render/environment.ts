@@ -90,7 +90,8 @@ export async function loadHdrEnvironment(
   scene: THREE.Scene,
   url: string,
   sun: { altitude: number; azimuth: number },
-  intensity = 1.2
+  intensity = 1.2,
+  setBackground = true
 ): Promise<EnvPath> {
   try {
     const hdr = await new RGBELoader().loadAsync(url);
@@ -99,11 +100,21 @@ export async function loadHdrEnvironment(
     const rt = pmrem.fromEquirectangular(hdr);
     scene.environment = rt.texture;
     scene.environmentIntensity = intensity;
+    if (setBackground) {
+      // Show the sky as a visible horizon instead of flat black; soften and dim
+      // it so it reads as distant haze behind the city, not a sharp photo.
+      scene.background = hdr;
+      scene.backgroundIntensity = 0.6;
+      scene.backgroundBlurriness = 0.4;
+    } else {
+      hdr.dispose();
+    }
     pmrem.dispose();
-    hdr.dispose();
     return "pmrem";
   } catch {
     const sky = generateSkyEquirect(sun);
-    return installEnvironment(renderer, scene, sky);
+    const path = installEnvironment(renderer, scene, sky);
+    if (setBackground) scene.background = sky;
+    return path;
   }
 }

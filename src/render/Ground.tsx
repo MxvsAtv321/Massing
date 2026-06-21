@@ -6,7 +6,8 @@ import * as THREE from "three/webgpu";
 // Flat ENU ground plane with a PBR material, sized to the model. The flat plane
 // stays (ADR-002, carried) as the receiver and agent substrate.
 export function Ground({ radius }: { radius: number }) {
-  const size = Math.max(radius * 6, 600);
+  // Large enough to run out under the distance haze rather than ending in view.
+  const size = Math.max(radius * 16, 4000);
   const material = useMemo(
     () =>
       new THREE.MeshStandardNodeMaterial({

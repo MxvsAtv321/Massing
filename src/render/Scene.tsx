@@ -5,6 +5,7 @@ import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { City } from "./City";
 import { Ground } from "./Ground";
+import { Streets } from "./Streets";
 import { Lighting } from "./Lighting";
 import { computeModelBounds } from "./cityGeometry";
 import type { CityPayload } from "./types";
@@ -31,9 +32,12 @@ export function Scene({ payload }: { payload: CityPayload }) {
 
   return (
     <>
-      <fogExp2 attach="fog" args={["#0c0e12", 0.35 / Math.max(bounds.radius, 1)]} />
+      {/* Warm distance haze blends the slice and the surrounding context into the
+          horizon instead of ending at a hard ground edge. */}
+      <fogExp2 attach="fog" args={["#241a14", 0.42 / Math.max(bounds.radius, 1)]} />
       <Lighting originLatLon={payload.originLatLon} bounds={bounds} />
       <Ground radius={bounds.radius} />
+      <Streets segments={payload.streets} />
       <City buildings={payload.buildings} />
       <OrbitControls
         enableDamping
