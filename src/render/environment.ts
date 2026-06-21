@@ -1,4 +1,5 @@
 import * as THREE from "three/webgpu";
+import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 
 // Procedurally generate an HDR equirectangular sky as the IBL source. No external
 // asset and nothing fetched (honors bake-don't-fetch); a photographic .hdr can
@@ -77,5 +78,32 @@ export function installEnvironment(
     scene.environment = sky;
     scene.environmentIntensity = 1.0;
     return "equirect";
+  }
+}
+
+// Load a baked HDRI from /public as the IBL source via PMREM. The .hdr is
+// committed to the repo (acquired once, like the data snapshot), so this is a
+// same-origin load of a baked asset, not an external runtime fetch. Falls back
+// to the procedural sky if the load or the PMREM path is not clean.
+export async function loadHdrEnvironment(
+  renderer: THREE.WebGPURenderer,
+  scene: THREE.Scene,
+  url: string,
+  sun: { altitude: number; azimuth: number },
+  intensity = 1.2
+): Promise<EnvPath> {
+  try {
+    const hdr = await new RGBELoader().loadAsync(url);
+    hdr.mapping = THREE.EquirectangularReflectionMapping;
+    const pmrem = new THREE.PMREMGenerator(renderer);
+    const rt = pmrem.fromEquirectangular(hdr);
+    scene.environment = rt.texture;
+    scene.environmentIntensity = intensity;
+    pmrem.dispose();
+    hdr.dispose();
+    return "pmrem";
+  } catch {
+    const sky = generateSkyEquirect(sun);
+    return installEnvironment(renderer, scene, sky);
   }
 }

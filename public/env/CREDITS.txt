@@ -1,0 +1,4 @@
+venice_sunset_1k.hdr
+Source: Poly Haven (https://polyhaven.com/a/venice_sunset)
+License: CC0 1.0 Universal (public domain). No attribution required; credited here as courtesy.
+Baked once into the repo as the golden-hour IBL source; not fetched at build or runtime.

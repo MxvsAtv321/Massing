@@ -22,7 +22,15 @@ export async function createRenderer(
   // AgX is the look-defining tone curve (ADR-R04). In 1a it runs on the default
   // render path; in 1b it moves into the node post output.
   renderer.toneMapping = THREE.AgXToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.35;
   await renderer.init();
+  // Report the backend three actually initialized (it may auto-fall back even when
+  // navigator.gpu exists). The on-screen badge reads the same source.
+  const isWebGPU = Boolean(
+    (renderer.backend as { isWebGPUBackend?: boolean } | undefined)?.isWebGPUBackend
+  );
+  if (typeof console !== "undefined") {
+    console.info(`[massing] render backend: ${isWebGPU ? "WebGPU" : "WebGL2 fallback"}`);
+  }
   return renderer;
 }
