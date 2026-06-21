@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, type CSSProperties } from "react";
 import type { ClickState, PendingPreview } from "./useEditInteraction";
+import { Panel } from "../ui/Panel";
+import { c, font, radius, ghostButton, primaryButton } from "../ui/theme";
 
 type Props = {
   clickState: ClickState | null;
@@ -17,10 +19,8 @@ type Props = {
 };
 
 function targetLabel(cs: ClickState): string {
-  if (cs.kind === "building") {
-    return `Building ~${Math.round(cs.heightM)} m`;
-  }
-  return `Empty lot (E ${cs.enu[0].toFixed(0)} m, N ${cs.enu[1].toFixed(0)} m)`;
+  if (cs.kind === "building") return `building ~${Math.round(cs.heightM)} m`;
+  return `empty lot  E ${cs.enu[0].toFixed(0)}  N ${cs.enu[1].toFixed(0)}`;
 }
 
 function placeholder(cs: ClickState): string {
@@ -43,7 +43,6 @@ export function EditControls({
 }: Props) {
   const [text, setText] = useState("");
 
-  // Clear input when preview is dismissed (apply or cancel).
   useEffect(() => {
     if (!pendingPreview) setText("");
   }, [pendingPreview]);
@@ -62,29 +61,22 @@ export function EditControls({
   const showInput = !!clickState && !pendingPreview;
   const showHint = !clickState && !canUndo;
 
+  const undoAccessory = canUndo ? (
+    <button onClick={onUndo} style={styles.undo}>
+      &#8617; undo
+    </button>
+  ) : undefined;
+
   return (
-    <div style={styles.panel}>
-      {/* Undo */}
-      {canUndo && (
-        <button onClick={onUndo} style={styles.undoBtn}>
-          ↩ Undo
-        </button>
-      )}
+    <Panel eyebrow="reshape" accessory={undoAccessory} style={{ top: 86, left: 20, width: 300 }} delay={60}>
+      {showHint && <div style={styles.hint}>Click a building or empty ground, then describe the change.</div>}
 
-      {/* Idle hint */}
-      {showHint && (
-        <div style={styles.hint}>
-          Click a building or empty ground to edit
-        </div>
-      )}
-
-      {/* Target + input */}
       {showInput && (
         <>
           <div style={styles.targetRow}>
-            <span style={styles.targetLabel}>{targetLabel(clickState)}</span>
-            <button onClick={onClearClick} style={styles.clearBtn} title="Clear">
-              ✕
+            <span style={styles.target}>{targetLabel(clickState)}</span>
+            <button onClick={onClearClick} style={styles.clear} title="Clear" aria-label="Clear selection">
+              &times;
             </button>
           </div>
           <div style={styles.inputRow}>
@@ -101,156 +93,53 @@ export function EditControls({
             <button
               onClick={handleSubmit}
               disabled={!text.trim() || isLoading}
-              style={{
-                ...styles.askBtn,
-                ...((!text.trim() || isLoading) ? styles.askBtnDisabled : {}),
-              }}
+              style={{ ...primaryButton, ...(!text.trim() || isLoading ? styles.disabled : {}) }}
             >
-              {isLoading ? "…" : "Ask"}
+              {isLoading ? "..." : "Ask"}
             </button>
           </div>
           {error && <div style={styles.error}>{error}</div>}
         </>
       )}
 
-      {/* Preview */}
       {pendingPreview && (
         <>
-          <div style={styles.diffLine}>{pendingPreview.diffLine}</div>
+          <div style={styles.diff}>{pendingPreview.diffLine}</div>
           <div style={styles.actionRow}>
-            <button onClick={onApply} style={styles.applyBtn}>
+            <button onClick={onApply} style={{ ...primaryButton, flex: 1 }}>
               Apply
             </button>
-            <button onClick={onCancel} style={styles.cancelBtn}>
+            <button onClick={onCancel} style={{ ...ghostButton, flex: 1 }}>
               Cancel
             </button>
           </div>
         </>
       )}
-    </div>
+    </Panel>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
-  panel: {
-    position: "fixed",
-    top: 84,
-    left: 20,
-    background: "rgba(10,10,12,0.80)",
-    backdropFilter: "blur(8px)",
-    borderRadius: 10,
-    padding: "10px 14px 12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 8,
-    color: "#e8e0d0",
-    fontFamily: "system-ui, sans-serif",
-    fontSize: 13,
-    minWidth: 280,
-    maxWidth: 340,
-    zIndex: 10,
-    userSelect: "none",
-  },
-  hint: {
-    color: "#888",
-    fontStyle: "italic",
-    fontSize: 12,
-    textAlign: "center",
-    padding: "4px 0",
-  },
-  undoBtn: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 6,
-    color: "#c8c0b8",
-    padding: "4px 10px",
-    fontSize: 12,
-    cursor: "pointer",
-    alignSelf: "flex-start",
-  },
-  targetRow: {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  targetLabel: {
-    color: "#f5e8c0",
-    fontWeight: 500,
-    fontSize: 13,
-  },
-  clearBtn: {
-    background: "transparent",
-    border: "none",
-    color: "#888",
-    cursor: "pointer",
-    fontSize: 14,
-    padding: "0 2px",
-    lineHeight: 1,
-  },
-  inputRow: {
-    display: "flex",
-    gap: 6,
-  },
+const styles: Record<string, CSSProperties> = {
+  undo: { ...ghostButton, padding: "2px 8px", fontSize: 10.5 },
+  hint: { fontFamily: font.sans, fontSize: 11.5, color: c.ink3, lineHeight: 1.5 },
+  targetRow: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 },
+  target: { fontFamily: font.mono, fontSize: 11.5, color: c.accent, letterSpacing: "0.01em" },
+  clear: { background: "transparent", border: "none", color: c.ink3, cursor: "pointer", fontSize: 16, lineHeight: 1, padding: "0 2px" },
+  inputRow: { display: "flex", gap: 6 },
   input: {
     flex: 1,
-    background: "rgba(255,255,255,0.07)",
-    border: "1px solid rgba(255,255,255,0.18)",
-    borderRadius: 6,
-    color: "#f0ece4",
-    padding: "5px 9px",
-    fontSize: 12,
-    outline: "none",
     minWidth: 0,
-  },
-  askBtn: {
-    background: "rgba(245,185,66,0.22)",
-    border: "1px solid rgba(245,185,66,0.45)",
-    borderRadius: 6,
-    color: "#f5e8c0",
-    padding: "5px 12px",
+    fontFamily: font.sans,
     fontSize: 12,
-    cursor: "pointer",
-    flexShrink: 0,
+    color: c.ink,
+    background: "rgba(255,255,255,0.05)",
+    border: `1px solid ${c.hairline2}`,
+    borderRadius: radius.sm,
+    padding: "6px 9px",
+    outline: "none",
   },
-  askBtnDisabled: {
-    opacity: 0.4,
-    cursor: "default",
-  },
-  error: {
-    color: "#e07060",
-    fontSize: 11,
-    lineHeight: 1.4,
-  },
-  diffLine: {
-    color: "#f5d080",
-    fontWeight: 500,
-    fontSize: 13,
-    padding: "2px 0",
-  },
-  actionRow: {
-    display: "flex",
-    gap: 8,
-  },
-  applyBtn: {
-    flex: 1,
-    background: "rgba(80,180,80,0.22)",
-    border: "1px solid rgba(80,200,80,0.45)",
-    borderRadius: 6,
-    color: "#a0e8a0",
-    padding: "5px 0",
-    fontSize: 12,
-    cursor: "pointer",
-    fontWeight: 600,
-  },
-  cancelBtn: {
-    flex: 1,
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.14)",
-    borderRadius: 6,
-    color: "#c8c0b8",
-    padding: "5px 0",
-    fontSize: 12,
-    cursor: "pointer",
-  },
+  disabled: { opacity: 0.4, cursor: "default" },
+  error: { fontFamily: font.sans, fontSize: 11, color: c.bad, lineHeight: 1.4, marginTop: 7 },
+  diff: { fontFamily: font.mono, fontSize: 12, color: c.accent, padding: "1px 0 2px", lineHeight: 1.4 },
+  actionRow: { display: "flex", gap: 8, marginTop: 9 },
 };

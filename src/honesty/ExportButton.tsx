@@ -1,11 +1,13 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { formatTorontoDateTime } from "../solar/time";
 import { computeBreakdown } from "./confidence";
 import { buildFooterLines, type FooterInput } from "./footer";
 import type { SunDriverState } from "../scene/useSunDriver";
 import type { BuildingForScene } from "../scene/buildings";
 import type { HypotheticalBuilding } from "../mutation/applyEdit";
+import { c, font, radius } from "../ui/theme";
 
 type FooterSourcesSlice = {
   dataset: string;
@@ -24,18 +26,19 @@ type Props = {
   hypotheticalBuildings: HypotheticalBuilding[];
 };
 
-const FOOTER_LINE_H = 17;
-const FOOTER_PAD_X = 16;
-const FOOTER_PAD_Y = 12;
+const LINE_H = 17;
+const PAD_X = 18;
+const PAD_TOP = 34; // room for the title row
+const PAD_BOTTOM = 13;
 
-export function ExportButton({
-  canvasRef,
-  sun,
-  sources,
-  realBuildings,
-  hypotheticalBuildings,
-}: Props) {
-  function handleExport() {
+function cssVar(name: string, fallback: string): string {
+  if (typeof window === "undefined") return fallback;
+  const v = getComputedStyle(document.body).getPropertyValue(name).trim();
+  return v || fallback;
+}
+
+export function ExportButton({ canvasRef, sun, sources, realBuildings, hypotheticalBuildings }: Props) {
+  async function handleExport() {
     const webglCanvas = canvasRef.current;
     if (!webglCanvas) return;
 
@@ -57,8 +60,18 @@ export function ExportButton({
     };
 
     const lines = buildFooterLines(footerInput);
-    const footerH = FOOTER_PAD_Y * 2 + lines.length * FOOTER_LINE_H;
 
+    const monoFamily = cssVar("--font-mono", "monospace");
+    const displayFamily = cssVar("--font-display", "Georgia, serif");
+    if (typeof document !== "undefined" && document.fonts) {
+      try {
+        await document.fonts.ready;
+      } catch {
+        /* fall back to whatever is available */
+      }
+    }
+
+    const footerH = PAD_TOP + lines.length * LINE_H + PAD_BOTTOM;
     const w = webglCanvas.width;
     const h = webglCanvas.height;
 
@@ -70,16 +83,26 @@ export function ExportButton({
 
     ctx.drawImage(webglCanvas, 0, 0);
 
-    ctx.fillStyle = "#0a0a0c";
+    // Footer plate.
+    ctx.fillStyle = "#15130e";
     ctx.fillRect(0, h, w, footerH);
+    // Amber rule across the seam.
+    ctx.fillStyle = "#f4a93a";
+    ctx.fillRect(0, h, w, 2);
 
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(0, h, w, 1);
+    // Title in the display serif.
+    ctx.fillStyle = "#ece4d4";
+    ctx.font = `600 16px ${displayFamily}`;
+    ctx.fillText("Massing", PAD_X, h + 24);
+    ctx.fillStyle = "#726a5c";
+    ctx.font = `11px ${monoFamily}`;
+    ctx.fillText("ST. LAWRENCE SHADOW + FLOW STUDY, TORONTO", PAD_X + 92, h + 23);
 
-    ctx.fillStyle = "#c8c0b8";
-    ctx.font = "12px system-ui, -apple-system, sans-serif";
+    // Provenance lines in mono.
+    ctx.fillStyle = "#a89f8d";
+    ctx.font = `12px ${monoFamily}`;
     lines.forEach((line, i) => {
-      ctx.fillText(line, FOOTER_PAD_X, h + FOOTER_PAD_Y + (i + 1) * FOOTER_LINE_H);
+      ctx.fillText(line, PAD_X, h + PAD_TOP + (i + 1) * LINE_H - 4);
     });
 
     const url = offscreen.toDataURL("image/png");
@@ -91,20 +114,27 @@ export function ExportButton({
 
   return (
     <button onClick={handleExport} style={styles.btn}>
-      Export PNG
+      <span style={styles.glyph}>&#8595;</span> Export
     </button>
   );
 }
 
-const styles: Record<string, React.CSSProperties> = {
+const styles: Record<string, CSSProperties> = {
   btn: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.16)",
-    borderRadius: 6,
-    color: "#c8c0b8",
-    padding: "5px 12px",
-    fontSize: 12,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    fontFamily: font.sans,
+    fontSize: 11.5,
+    color: c.ink2,
+    background: c.surface,
+    backdropFilter: "var(--blur)",
+    WebkitBackdropFilter: "var(--blur)",
+    border: `1px solid ${c.hairline}`,
+    borderRadius: radius.sm,
+    padding: "6px 13px",
     cursor: "pointer",
-    fontFamily: "system-ui, sans-serif",
+    transition: "color 0.15s ease, border-color 0.15s ease",
   },
+  glyph: { fontFamily: font.mono, color: c.accent, fontSize: 12 },
 };

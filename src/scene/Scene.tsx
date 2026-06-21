@@ -32,6 +32,8 @@ import { useDemandScenario } from "../traffic/useDemandScenario";
 import { useFlow } from "../traffic/useFlow";
 import { matchCountsToEdges, validateFlow, type CountStation } from "../traffic/validation";
 import { Wordmark } from "../ui/Wordmark";
+import { SegmentedControl } from "../ui/SegmentedControl";
+import { c, font } from "../ui/theme";
 import { BuildingInfoPanel } from "../honesty/BuildingInfoPanel";
 import { DoNotMeasurePanel } from "../honesty/DoNotMeasurePanel";
 import { ExportButton } from "../honesty/ExportButton";
@@ -483,49 +485,28 @@ export function Scene({
 
       {showFlow && flow && <FlowReadout flow={flow} />}
 
-      {/* Bottom-right: data-quality toggle + legend + export */}
+      {/* Bottom-right: view console + legend + export */}
       <div style={styles.bottomRight}>
         {tintByConfidence && (
           <div style={styles.legend}>
             <span style={styles.legendItem}>
-              <span style={{ ...styles.chip, background: "#6aaa84" }} /> Measured (LiDAR)
+              <span style={{ ...styles.chip, background: c.measured }} /> Measured, LiDAR
             </span>
             <span style={styles.legendItem}>
-              <span style={{ ...styles.chip, background: "#c88a3a" }} /> Estimated (Site Plan)
+              <span style={{ ...styles.chip, background: c.estimated }} /> Estimated, Site Plan
             </span>
           </div>
         )}
         <div style={styles.controlRow}>
-          <button
-            onClick={() => setShowRoads((r) => !r)}
-            style={{ ...styles.ctrlBtn, ...(showRoads ? styles.ctrlBtnActive : {}) }}
-          >
-            {showRoads ? "● Roads" : "○ Roads"}
-          </button>
-          <button
-            onClick={() => setShowDemand((d) => !d)}
-            style={{ ...styles.ctrlBtn, ...(showDemand ? styles.ctrlBtnActive : {}) }}
-          >
-            {showDemand ? "● Demand" : "○ Demand"}
-          </button>
-          <button
-            onClick={() => setShowFlow((f) => !f)}
-            style={{ ...styles.ctrlBtn, ...(showFlow ? styles.ctrlBtnActive : {}) }}
-          >
-            {showFlow ? "● Flow" : "○ Flow"}
-          </button>
-          <button
-            onClick={() => setShowCounts((c) => !c)}
-            style={{ ...styles.ctrlBtn, ...(showCounts ? styles.ctrlBtnActive : {}) }}
-          >
-            {showCounts ? "● Counts" : "○ Counts"}
-          </button>
-          <button
-            onClick={() => setTintByConfidence((t) => !t)}
-            style={{ ...styles.ctrlBtn, ...(tintByConfidence ? styles.ctrlBtnActive : {}) }}
-          >
-            {tintByConfidence ? "● Quality" : "○ Quality"}
-          </button>
+          <SegmentedControl
+            segments={[
+              { id: "roads", label: "Roads", active: showRoads, onToggle: () => setShowRoads((r) => !r) },
+              { id: "demand", label: "Demand", active: showDemand, onToggle: () => setShowDemand((d) => !d) },
+              { id: "flow", label: "Flow", active: showFlow, onToggle: () => setShowFlow((f) => !f) },
+              { id: "counts", label: "Counts", active: showCounts, onToggle: () => setShowCounts((v) => !v) },
+              { id: "quality", label: "Quality", active: tintByConfidence, onToggle: () => setTintByConfidence((t) => !t) },
+            ]}
+          />
           <ExportButton
             canvasRef={glCanvasRef}
             sun={sun}
@@ -542,57 +523,30 @@ export function Scene({
 const styles: Record<string, React.CSSProperties> = {
   bottomRight: {
     position: "fixed",
-    bottom: 24,
+    bottom: 22,
     right: 20,
     display: "flex",
     flexDirection: "column",
     alignItems: "flex-end",
-    gap: 6,
+    gap: 8,
     zIndex: 10,
     userSelect: "none",
   },
   legend: {
-    background: "rgba(10,10,12,0.80)",
-    backdropFilter: "blur(8px)",
+    background: c.surface,
+    backdropFilter: "var(--blur)",
+    WebkitBackdropFilter: "var(--blur)",
+    border: `1px solid ${c.hairline}`,
     borderRadius: 8,
-    padding: "6px 12px",
+    padding: "7px 12px",
     display: "flex",
     flexDirection: "column",
-    gap: 4,
-    fontFamily: "system-ui, sans-serif",
+    gap: 5,
+    fontFamily: font.sans,
     fontSize: 11,
-    color: "#c8c0b8",
+    color: c.ink2,
   },
-  legendItem: {
-    display: "flex",
-    alignItems: "center",
-    gap: 6,
-  },
-  chip: {
-    display: "inline-block",
-    width: 10,
-    height: 10,
-    borderRadius: 2,
-    flexShrink: 0,
-  },
-  controlRow: {
-    display: "flex",
-    gap: 8,
-    alignItems: "center",
-  },
-  ctrlBtn: {
-    background: "rgba(255,255,255,0.08)",
-    border: "1px solid rgba(255,255,255,0.16)",
-    borderRadius: 6,
-    color: "#c8c0b8",
-    padding: "5px 12px",
-    fontSize: 12,
-    cursor: "pointer",
-    fontFamily: "system-ui, sans-serif",
-  },
-  ctrlBtnActive: {
-    background: "rgba(106,170,132,0.20)",
-    border: "1px solid rgba(106,170,132,0.45)",
-    color: "#6aaa84",
-  },
+  legendItem: { display: "flex", alignItems: "center", gap: 7 },
+  chip: { display: "inline-block", width: 9, height: 9, borderRadius: 2, flexShrink: 0 },
+  controlRow: { display: "flex", gap: 8, alignItems: "center" },
 };
