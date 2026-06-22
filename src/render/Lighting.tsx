@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import type * as THREE from "three/webgpu";
+import { CSMShadowNode } from "three/addons/csm/CSMShadowNode.js";
 import { sunAtMinutes } from "./sunInstant";
 import { daylightFor, skyGradeFor } from "./daylight";
 import { updateProceduralSky, type SkyHandle } from "./environment";
@@ -36,6 +37,7 @@ export function Lighting({
 
   const lightRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
+  const csm = useRef<CSMShadowNode | null>(null);
 
   const sky = useRef<SkyHandle | null>(null);
   const lastSky = useRef({ alt: -999, az: -999, ms: -Infinity });
@@ -63,6 +65,37 @@ export function Lighting({
       scene.background = null;
     };
   }, [scene, cx, cz]);
+
+  // Cascaded shadow maps on the WebGPU path: low sun makes shadows very long, and
+  // one shadow camera cannot hold near and far at resolution. CSMShadowNode splits
+  // the view frustum into cascades. It is WebGPU-only, so the WebGL2 fallback keeps
+  // the single shadow camera in the JSX below, visibly lesser by decision (ADR-R01).
+  useEffect(() => {
+    const light = lightRef.current;
+    if (!light) return;
+    const isWebGPU = Boolean(
+      (gl as unknown as { backend?: { isWebGPUBackend?: boolean } }).backend
+        ?.isWebGPUBackend
+    );
+    if (!isWebGPU) return;
+
+    const node = new CSMShadowNode(light, {
+      cascades: 4,
+      maxFar: Math.max(bounds.radius * 3.5, 1500),
+      mode: "practical",
+      lightMargin: Math.max(bounds.radius * 1.5, 800),
+    });
+    node.fade = true;
+    const shadow = light.shadow as unknown as { shadowNode: unknown };
+    shadow.shadowNode = node;
+    csm.current = node;
+
+    return () => {
+      node.dispose();
+      shadow.shadowNode = null;
+      csm.current = null;
+    };
+  }, [gl, bounds]);
 
   useFrame((_, delta) => {
     const minutes = dayClock.tick(delta);
@@ -111,8 +144,8 @@ export function Lighting({
       <directionalLight
         ref={lightRef}
         castShadow
-        shadow-mapSize-width={4096}
-        shadow-mapSize-height={4096}
+        shadow-mapSize-width={2048}
+        shadow-mapSize-height={2048}
         shadow-camera-near={1}
         shadow-camera-far={dist * 3 + bounds.radius * 2}
         shadow-camera-left={-bounds.radius * 1.6}
