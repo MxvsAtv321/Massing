@@ -4,6 +4,7 @@ import { useEffect, useMemo } from "react";
 import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { City } from "./City";
+import { Context } from "./Context";
 import { Ground } from "./Ground";
 import { Streets } from "./Streets";
 import { Lighting } from "./Lighting";
@@ -39,6 +40,13 @@ export function Scene({ payload }: { payload: CityPayload }) {
       <Ground radius={bounds.radius} />
       <Streets segments={payload.streets} />
       <City buildings={payload.buildings} />
+      {/* Invented backdrop fabric so the slice reads as part of a larger city;
+          low, desaturated, and fog-bound, never measured Toronto. */}
+      <Context
+        center={bounds.center}
+        innerRadius={bounds.radius * 1.2}
+        outerRadius={bounds.radius * 3.5}
+      />
       <OrbitControls
         enableDamping
         dampingFactor={0.08}
