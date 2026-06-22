@@ -6,6 +6,7 @@ import { createRenderer } from "./createRenderer";
 import { pickBackend, detectWebGPU, type Backend } from "./pickBackend";
 import { Scene } from "./Scene";
 import { RenderPipeline } from "./RenderPipeline";
+import { TimeOfDayControl } from "./TimeOfDayControl";
 import type { CityPayload } from "./types";
 
 const CLEAR_COLOR = "#0b0d10";
@@ -27,6 +28,7 @@ export default function Viewport({ payload }: { payload: CityPayload }) {
         <BackendReporter onResolved={setBackend} />
       </Canvas>
       <BackendBadge backend={backend} />
+      <TimeOfDayControl />
     </div>
   );
 }
