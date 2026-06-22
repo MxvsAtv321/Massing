@@ -91,7 +91,7 @@ export function updateProceduralSky(
   scene.environment = rt.texture;
   scene.environmentIntensity = envIntensity;
   scene.background = sky;
-  scene.backgroundIntensity = 1.0;
+  scene.backgroundIntensity = 0.7;
   scene.backgroundBlurriness = 0.0;
 
   if (prev) {

@@ -12,7 +12,7 @@ import type { ModelBounds } from "./types";
 
 // The day runs on 2026-06-21 for now; a date picker is a later beat (Unit 3a).
 const DATE = "2026-06-21";
-const ENV_INTENSITY = 1.0;
+const ENV_INTENSITY = 0.6;
 
 // Regenerate the sky only when the sun has moved this far, and not more often
 // than this, so PMREM never runs per frame.
@@ -103,15 +103,15 @@ export function Lighting({
     const grade = daylightFor(sun.altitude);
     const skyGrade = skyGradeFor(sun.altitude);
 
-    // Haze tracks the sky horizon so the distance blend matches the dome instead
-    // of staying a fixed warm brown under a blue noon sky. Slightly darkened so
-    // it reads as depth, not a bright wall.
+    // Haze takes the hue of the sky horizon so the distance blend matches the
+    // dome, but heavily darkened so it reads as depth, not a bright wall washing
+    // the city out. Paired with a low fog density (Scene.tsx).
     const fog = scene.fog as { color?: { setRGB(r: number, g: number, b: number): void } } | null;
     if (fog?.color) {
       fog.color.setRGB(
-        skyGrade.horizon[0] * 0.8,
-        skyGrade.horizon[1] * 0.8,
-        skyGrade.horizon[2] * 0.8
+        skyGrade.horizon[0] * 0.4,
+        skyGrade.horizon[1] * 0.4,
+        skyGrade.horizon[2] * 0.4
       );
     }
 

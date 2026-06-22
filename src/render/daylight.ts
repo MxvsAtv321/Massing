@@ -20,9 +20,9 @@ export type SkyGrade = {
   exposure: number; // overall sky brightness, dims toward night
 };
 
-const MAX_INTENSITY = 4.6;
-const DAY_AMBIENT = 0.12;
-const NIGHT_AMBIENT = 0.02;
+const MAX_INTENSITY = 4.2;
+const DAY_AMBIENT = 0.05;
+const NIGHT_AMBIENT = 0.015;
 
 // Warm horizon sun toward a cool white overhead sun.
 const SUN_WARM: [number, number, number] = [1.0, 0.78, 0.52];
@@ -32,9 +32,10 @@ export function daylightFor(altitudeDeg: number): Daylight {
   const dayFactor = clamp01(altitudeDeg / 12);
   const isNight = altitudeDeg <= 0;
 
-  // Continuous through the horizon: smoothstep of altitude/45 is 0 at and below
-  // the horizon and reaches the cap by 45 degrees, so dusk fades, not snaps.
-  const intensity = MAX_INTENSITY * smoothstep(clamp01(altitudeDeg / 45));
+  // Continuous through the horizon, but reaches full strength quickly (by ~12
+  // degrees) so daylight has real punch and casts hard shadows; only the last few
+  // degrees before the horizon dim into a warm, low dusk.
+  const intensity = MAX_INTENSITY * smoothstep(clamp01(altitudeDeg / 12));
 
   const t = clamp01(altitudeDeg / 50);
   const color = lerp3(SUN_WARM, SUN_NOON, t);
@@ -48,7 +49,7 @@ export function daylightFor(altitudeDeg: number): Daylight {
 // altitude so the dome shifts with the sun.
 export function skyGradeFor(altitudeDeg: number): SkyGrade {
   const twilight = clamp01((altitudeDeg + 8) / 14); // 0 deep night .. 1 by ~6 deg
-  const day = clamp01((altitudeDeg - 2) / 20); // 0 until ~2 deg .. 1 by ~22 deg
+  const day = clamp01((altitudeDeg - 2) / 30); // 0 until ~2 deg .. 1 by ~32 deg
 
   const nightZenith: RGB = [0.02, 0.03, 0.07];
   const twilightZenith: RGB = [0.1, 0.12, 0.3];
@@ -66,8 +67,8 @@ export function skyGradeFor(altitudeDeg: number): SkyGrade {
   );
   const ground: RGB = [0.03, 0.03, 0.035];
 
-  const glow = lerp(0.2, 1.0, twilight) * lerp(1.6, 1.0, day); // big at dusk, calm at noon
-  const exposure = lerp(0.15, 1.0, twilight);
+  const glow = lerp(0.15, 0.7, twilight) * lerp(1.4, 1.0, day); // warm at dusk, calm at noon
+  const exposure = lerp(0.12, 0.85, twilight);
 
   return { zenith, horizon, ground, glow, exposure };
 }

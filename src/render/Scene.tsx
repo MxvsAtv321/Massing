@@ -35,7 +35,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
     <>
       {/* Warm distance haze blends the slice and the surrounding context into the
           horizon instead of ending at a hard ground edge. */}
-      <fogExp2 attach="fog" args={["#241a14", 0.42 / Math.max(bounds.radius, 1)]} />
+      <fogExp2 attach="fog" args={["#241a14", 0.18 / Math.max(bounds.radius, 1)]} />
       <Lighting originLatLon={payload.originLatLon} bounds={bounds} />
       <Ground radius={bounds.radius} />
       <Streets segments={payload.streets} />
