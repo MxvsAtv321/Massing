@@ -9,6 +9,7 @@ import { assignWithBand, type ODNodeFlow } from "../src/traffic/assignment";
 import { dedupKey, clampCongestion } from "../src/render/flowField";
 import type { BuildingForScene } from "../src/mutation/building";
 import type { StreetSegment } from "../src/render/types";
+import type { AgentGraphData } from "../src/sim/agentGraph";
 import CanvasClient from "./_components/CanvasClient";
 
 // Unit 1+2: resolve the baked city model and road network at build time (server
@@ -84,12 +85,31 @@ export default async function Page() {
     });
   }
 
+  // Directed agent graph in world space: every directed edge keeps its polyline
+  // and its congested flow speed, so agents flow with oneway/twoway and crawl
+  // through the jams. World [x, z] = [east, -north], the shared axis map.
+  const nodeIndex = new Map<string, number>();
+  roadNetwork.nodes.forEach((n, i) => nodeIndex.set(n.id, i));
+  const network: AgentGraphData = {
+    nodes: roadNetwork.nodes.map((n) => [n.enu[0], -n.enu[1]]),
+    edges: roadNetwork.edges
+      .filter((e) => nodeIndex.has(e.from) && nodeIndex.has(e.to))
+      .map((e) => ({
+        from: nodeIndex.get(e.from)!,
+        to: nodeIndex.get(e.to)!,
+        pts: e.geometry.map(([east, north]) => [east, -north] as [number, number]),
+        speedKph: flow.perEdge.get(e.id)?.speedMidKph ?? e.speedLimitKph,
+        freeKph: e.speedLimitKph,
+      })),
+  };
+
   return (
     <CanvasClient
       payload={{
         buildings,
         streets,
         clusters: model.clusters,
+        network,
         originLatLon: model.originLatLon,
         metresPerStorey: model.sources.metresPerStorey,
       }}

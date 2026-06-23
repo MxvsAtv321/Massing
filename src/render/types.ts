@@ -1,5 +1,6 @@
 import type { BuildingForScene } from "../mutation/building";
 import type { ClusterIndexEntry } from "../model/types";
+import type { AgentGraphData } from "../sim/agentGraph";
 
 // One drivable street centerline, deduped from the directed road graph.
 export type StreetSegment = {
@@ -17,6 +18,7 @@ export type CityPayload = {
   buildings: BuildingForScene[];
   streets: StreetSegment[];
   clusters: Record<string, ClusterIndexEntry>;
+  network: AgentGraphData; // directed graph + flow speeds, for the living traffic
   originLatLon: [number, number]; // stored [lon, lat] (loader convention)
   metresPerStorey: number;
 };

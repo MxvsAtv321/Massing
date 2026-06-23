@@ -7,6 +7,7 @@ import { City } from "./City";
 import { Context } from "./Context";
 import { Ground } from "./Ground";
 import { Streets } from "./Streets";
+import { Traffic } from "./Traffic";
 import { Lighting } from "./Lighting";
 import { SelectionHighlight } from "./SelectionHighlight";
 import { HeightGizmo } from "./HeightGizmo";
@@ -106,6 +107,9 @@ export function Scene({ payload }: { payload: CityPayload }) {
       <Lighting originLatLon={payload.originLatLon} bounds={bounds} />
       <Ground radius={bounds.radius} />
       <Streets segments={payload.streets} />
+      {/* Living traffic: glowing capsules advected on the directed graph at the
+          flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
+      <Traffic network={payload.network} />
       <City buildings={payload.buildings} />
       {/* Warm additive glow over whichever cluster is picked (selectionStore). */}
       <SelectionHighlight buildings={payload.buildings} />
