@@ -12,7 +12,7 @@ import {
   vec3,
   mix,
 } from "three/tsl";
-import type { AgentGraph } from "../sim/agentGraph";
+import { sampleEdge, type AgentGraph } from "../sim/agentGraph";
 import { buildGpuGraph } from "../sim/graphGpu";
 import { spawnAgents } from "../sim/agents";
 
@@ -45,10 +45,26 @@ export function createTrafficCompute(
     const aEdge = instancedArray(Uint32Array.from(init.edge), "uint");
     const aDist = instancedArray(init.dist, "float");
     const aSeed = instancedArray(init.seed, "uint");
-    // Render outputs (written by the kernel, read by the material).
-    const aPos = instancedArray(count, "vec3");
-    const aDir = instancedArray(count, "vec2"); // (sinθ, cosθ) = (dirX, dirZ)
-    const aRatio = instancedArray(count, "float");
+    // Render outputs (written by the kernel, read by the material). Seeded from
+    // the spawn state so agents are visible at their start points even before the
+    // first compute, and so a stalled compute degrades to static-but-placed cars
+    // (not a clump at the origin) which also makes the failure mode diagnosable.
+    const pos0 = new Float32Array(count * 3);
+    const dir0 = new Float32Array(count * 2);
+    const ratio0 = new Float32Array(count);
+    for (let a = 0; a < count; a++) {
+      const e = graph.edges[init.edge[a]];
+      const s = sampleEdge(e, init.dist[a]);
+      pos0[3 * a] = s.x;
+      pos0[3 * a + 1] = Y_CAR;
+      pos0[3 * a + 2] = s.z;
+      dir0[2 * a] = s.dirX;
+      dir0[2 * a + 1] = s.dirZ;
+      ratio0[a] = e.freeMps > 0 ? Math.min(1, e.speedMps / e.freeMps) : 1;
+    }
+    const aPos = instancedArray(pos0, "vec3");
+    const aDir = instancedArray(dir0, "vec2"); // (sinθ, cosθ) = (dirX, dirZ)
+    const aRatio = instancedArray(ratio0, "float");
     // Static graph, seeded from typed arrays (count inferred from length).
     const eP0 = instancedArray(g.edgeP0, "vec2");
     const eP1 = instancedArray(g.edgeP1, "vec2");
@@ -127,6 +143,12 @@ export function createTrafficCompute(
     geo.rotateX(Math.PI / 2); // long axis along +Z (travel forward)
     const mesh = new THREE.InstancedMesh(geo, material, count);
     mesh.frustumCulled = false; // positions live in storage, not in the bounds
+    // InstancedMesh seeds instanceMatrix to zeros, which would collapse every
+    // instance to the origin; the per-instance transform comes from positionNode,
+    // so set identity to pass it through untouched.
+    const identity = new THREE.Matrix4();
+    for (let i = 0; i < count; i++) mesh.setMatrixAt(i, identity);
+    mesh.instanceMatrix.needsUpdate = true;
 
     return {
       mesh,
