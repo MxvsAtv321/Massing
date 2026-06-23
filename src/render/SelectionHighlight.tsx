@@ -2,16 +2,20 @@
 
 import { useMemo, useEffect } from "react";
 import * as THREE from "three/webgpu";
+import { normalView, positionViewDirection, vec3 } from "three/tsl";
 import { buildBuildingGeometries } from "./cityGeometry";
 import { useSelection, selection } from "./selectionStore";
 import type { BuildingForScene } from "../mutation/building";
 
-// A warm, HDR additive glow laid over the selected cluster's footprint geometry.
-// Unlit and additive so the building's own shading still reads through it, and
-// bright enough (> 1) that the bloom pass catches the silhouette: selecting a
-// building makes it glow rather than wear a wireframe box. The overlay is built
-// from the same extruder the city uses, so it sits exactly on the real geometry.
-const GLOW = new THREE.Color(1.8, 1.0, 0.35);
+// A warm Fresnel rim laid over the selected cluster's footprint geometry. A flat
+// additive fill blows the silhouette to white and flattens the form; instead the
+// glow rides the grazing edges (bright enough to feed bloom) with only a faint
+// base tint on faces dead-on to the camera, so the building stays readable and
+// still reads as unmistakably selected. The overlay is built from the same
+// extruder the city uses, so it sits exactly on the real geometry.
+const RIM_COLOR: [number, number, number] = [1.6, 0.95, 0.4]; // warm, HDR (> 1)
+const RIM_POWER = 2.0; // higher = tighter rim
+const BASE_TINT = 0.04; // faint fill so a head-on building still glows
 
 export function SelectionHighlight({
   buildings,
@@ -36,7 +40,6 @@ export function SelectionHighlight({
     if (geometries.length === 0) return null;
 
     const material = new THREE.MeshBasicNodeMaterial({
-      color: GLOW,
       transparent: true,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
@@ -47,6 +50,12 @@ export function SelectionHighlight({
       polygonOffsetFactor: -2,
       polygonOffsetUnits: -2,
     });
+
+    // facing = 1 head-on to the camera, 0 at the silhouette; invert and sharpen
+    // so the warm color concentrates on the grazing edges, plus a faint base.
+    const facing = normalView.dot(positionViewDirection).max(0);
+    const rim = facing.oneMinus().pow(RIM_POWER).add(BASE_TINT);
+    material.colorNode = vec3(RIM_COLOR[0], RIM_COLOR[1], RIM_COLOR[2]).mul(rim);
 
     const g = new THREE.Group();
     for (const geo of geometries) {
