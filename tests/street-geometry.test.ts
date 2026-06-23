@@ -20,10 +20,12 @@ describe("buildStreetGeometry", () => {
       ],
       lanes: 2,
       roadClass: "residential",
+      congestion: 0,
     };
     const geo = buildStreetGeometry([seg]);
 
     expect(geo.getAttribute("position").count).toBe(4); // 2 points x (left, right)
+    expect(geo.getAttribute("congestion").count).toBe(4); // flow colour per vertex
     expect(geo.getIndex()!.count).toBe(6); // one quad = two triangles
 
     geo.computeBoundingBox();
@@ -40,7 +42,7 @@ describe("buildStreetGeometry", () => {
 
   it("skips degenerate single-point paths", () => {
     const geo = buildStreetGeometry([
-      { path: [[0, 0]], lanes: 2, roadClass: "residential" },
+      { path: [[0, 0]], lanes: 2, roadClass: "residential", congestion: 0 },
     ]);
     expect(geo.getAttribute("position").count).toBe(0);
   });

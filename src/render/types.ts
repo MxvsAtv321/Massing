@@ -6,6 +6,7 @@ export type StreetSegment = {
   path: [number, number][]; // ENU [east, north] polyline
   lanes: number;
   roadClass: string;
+  congestion: number; // 0..1 max v/c across the segment's directions (flow field)
 };
 
 // Slim client payload resolved at build time from the baked city model. Carries

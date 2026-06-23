@@ -2,11 +2,17 @@
 
 import { useMemo } from "react";
 import * as THREE from "three/webgpu";
+import { attribute, mul } from "three/tsl";
 import { buildStreetGeometry } from "./streetGeometry";
 import type { StreetSegment } from "./types";
 
+// How hard the per-edge flow colour glows on the asphalt. HDR (> 1) on the busiest
+// roads so they bloom; free-flow roads carry near-zero emissive (see flowField).
+const FLOW_GAIN = 1.8;
+
 // The real OSM street grid as flat asphalt ribbons on the ground (grounded data,
-// not invented). Static surfaces only; living traffic is Unit 5.
+// not invented). The asphalt is static; the congestion glow on top is the living
+// flow field (Unit 5), an emissive read from the per-vertex congestion attribute.
 export function Streets({ segments }: { segments: StreetSegment[] }) {
   const mesh = useMemo(() => {
     const geo = buildStreetGeometry(segments);
@@ -16,6 +22,7 @@ export function Streets({ segments }: { segments: StreetSegment[] }) {
       metalness: 0.0,
       side: THREE.DoubleSide,
     });
+    material.emissiveNode = mul(attribute("congestion", "vec3"), FLOW_GAIN);
     const m = new THREE.Mesh(geo, material);
     m.receiveShadow = true;
     return m;

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { congestionEmissive } from "./flowField";
 import type { StreetSegment } from "./types";
 
 const LANE_WIDTH_M = 3.6;
@@ -28,6 +29,7 @@ export function streetWidth(lanes: number, roadClass: string): number {
 export function buildStreetGeometry(segments: StreetSegment[]): THREE.BufferGeometry {
   const positions: number[] = [];
   const normals: number[] = [];
+  const congestion: number[] = []; // per-vertex emissive flow colour
   const indices: number[] = [];
   let base = 0;
 
@@ -35,6 +37,7 @@ export function buildStreetGeometry(segments: StreetSegment[]): THREE.BufferGeom
     const pts = seg.path;
     if (pts.length < 2) continue;
     const half = streetWidth(seg.lanes, seg.roadClass) / 2;
+    const [er, eg, eb] = congestionEmissive(seg.congestion);
 
     // ENU [east, north] -> XZ [east, -north]
     const xz = pts.map(([e, n]) => [e, -n] as [number, number]);
@@ -54,6 +57,7 @@ export function buildStreetGeometry(segments: StreetSegment[]): THREE.BufferGeom
       positions.push(x + px * half, Y_OFFSET, z + pz * half); // left
       positions.push(x - px * half, Y_OFFSET, z - pz * half); // right
       normals.push(0, 1, 0, 0, 1, 0);
+      congestion.push(er, eg, eb, er, eg, eb); // same flow colour both edges
     }
 
     for (let i = 0; i < xz.length - 1; i++) {
@@ -70,6 +74,7 @@ export function buildStreetGeometry(segments: StreetSegment[]): THREE.BufferGeom
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
   geo.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+  geo.setAttribute("congestion", new THREE.Float32BufferAttribute(congestion, 3));
   geo.setIndex(indices);
   return geo;
 }
