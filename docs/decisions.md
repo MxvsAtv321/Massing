@@ -305,6 +305,77 @@ mutation, which the editor needs). One mesh per building (1315 draw calls, blows
 
 ---
 
+## ADR-R10: Selection picks by CPU raycast against the BatchedMesh, not a GPU id-pass
+
+Status: Accepted
+Date: 2026-06-23
+
+Context: selection must resolve a pointer to a specific building cluster, through the single
+BatchedMesh (ADR-R09) and without being defeated by the node post pipeline (ADR-R01). Two families
+exist. A GPU id-buffer pick renders object ids to an offscreen target and reads back the pixel
+under the cursor: that is an extra render pass wired into the same node graph that is the project's
+headline risk, a frame-stalling readback, and an ongoing burden to keep in sync with the post
+pipeline's targets. A CPU raycast tests the ray against the batched geometry on the main thread.
+Footprint fragmentation (the data spine) means a building is several polygons, so a pick must
+resolve to the whole cluster, never a single polygon.
+
+Decision: pick by CPU raycast against the BatchedMesh. three's `BatchedMesh.raycast` reports the
+hit instance as `intersection.batchId`; that instanceId maps to a clusterId through a table built
+once in the same order the instances were added (`cityIndex.buildInstanceClusterIds`, fed by
+`cityGeometry`'s own emitted ids so it cannot drift), and parked on the mesh `userData`. A click
+that misses the city clears the selection. Selection state lives in a dependency-free
+`useSyncExternalStore` store (`selectionStore`), the same pattern as the day clock.
+
+Consequences: picking is backend-agnostic, identical on the WebGPU and WebGL2 paths, and never
+touches the post stack, so it carries none of the ADR-R01 risk. The cost is one CPU raycast per
+click against roughly 1300 instances, negligible at click frequency. If hover-picking every frame
+or a far larger city ever makes per-click raycast a bottleneck, a GPU id-pass can be revisited; it
+is not needed now.
+
+Alternatives rejected: GPU id-buffer pick (an extra pass in the at-risk node graph, a
+frame-stalling readback, and target-sync burden, for no benefit at this scale). Raycasting merged
+geometry and mapping face ranges back to buildings (exactly the bookkeeping ADR-R09 exists to
+avoid).
+
+---
+
+## ADR-R11: Height edits re-batch via a per-instance Y-scale matrix; grounded geometry is never rebuilt
+
+Status: Accepted
+Date: 2026-06-23
+
+Context: a height edit must change a building's height live under a gizmo and on commit, while the
+grounded measured heights stay sacred (heights are never invented or mutated) and identity,
+per-object culling, and shadows survive (ADR-R09). Each building's extruded geometry is world-placed
+with its base at y=0. A height change can be applied two ways: rebuild the affected geometry at the
+new height and re-add it to the batch, or scale the existing instance with a per-instance matrix.
+
+Decision: a height edit is a per-instance Y-scale matrix on the BatchedMesh, `scale(1,
+newRep/oldRep, 1)`, applied to every instance of the cluster. Because each base sits at y=0, a
+Y-scale about the world origin scales height and keeps the base grounded for any footprint position.
+The grounded geometry is never rebuilt and the original heights are never mutated; the edit lives in
+the existing edit overlay (`modifiedClusterHeights`, an undoable log) and is mirrored into a
+per-frame ratio store (`editRatios`) the renderer reads in `useFrame`. The gizmo drives a transient
+live-drag ratio; release snaps to whole storeys and commits a `ModifyBuilding` op, the same bounded
+op the natural-language path resolves to (ADR-004 amended). The selection glow and the gizmo proxy
+read the same ratio so they track the building.
+
+Consequences: no geometry reallocation on edit, so no rebuild stutter and the draw stays one call
+(ADR-R08, ADR-R09); per-instance culling and CSM shadows follow the scaled matrix for free. The
+overlay stays the logical source of truth for undo, persistence, and the simulation and language
+paths, decoupled from the visual fast path. The matrix path is height-only by construction;
+translate or footprint edits (a later unit) need a new op and may exercise the geometry-swap path.
+One known limit: the BatchedMesh's overall bounding volume is not recomputed on edit, so a building
+scaled to an extreme height relies on per-object frustum culling (on by default) rather than the
+whole-mesh bound; acceptable while the city stays in frame.
+
+Alternatives rejected: rebuilding the cluster geometry at the new height on every commit (correct
+but reallocates and stutters, and tempts mutating the grounded geometry). Writing edited heights
+back into the original building list (violates the grounded-heights-are-sacred spine and loses
+cheap undo).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
