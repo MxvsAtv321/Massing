@@ -1,9 +1,15 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
 import * as THREE from "three/webgpu";
+import type { ThreeEvent } from "@react-three/fiber";
 import { buildBuildingGeometries } from "./cityGeometry";
-import { buildBuildingClusterMap, buildInstanceClusterIds } from "./cityIndex";
+import {
+  buildBuildingClusterMap,
+  buildInstanceClusterIds,
+  resolveClusterFromBatchId,
+} from "./cityIndex";
+import { selection } from "./selectionStore";
 import type { BuildingForScene } from "../mutation/building";
 
 // The whole static city as one BatchedMesh (ADR-R09): unique per-building
@@ -58,7 +64,19 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
     return batched;
   }, [buildings]);
 
-  return <primitive object={mesh} />;
+  // A click resolves the raycast hit (batchId == instanceId) to its cluster via
+  // the userData table built above, with no extra render pass. stopPropagation so
+  // the same click is not also seen as a miss.
+  const onPick = useCallback((e: ThreeEvent<MouseEvent>) => {
+    e.stopPropagation();
+    const ids = (e.object.userData.instanceClusterIds ?? []) as string[];
+    selection.select(resolveClusterFromBatchId(e.batchId, ids));
+  }, []);
+
+  // A click that misses the city (empty ground, sky) clears the selection.
+  const onMiss = useCallback(() => selection.clear(), []);
+
+  return <primitive object={mesh} onClick={onPick} onPointerMissed={onMiss} />;
 }
 
 // Deterministic [0,1) jitter from an integer so the look is stable across renders.

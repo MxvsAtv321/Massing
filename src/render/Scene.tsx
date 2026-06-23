@@ -8,6 +8,7 @@ import { Context } from "./Context";
 import { Ground } from "./Ground";
 import { Streets } from "./Streets";
 import { Lighting } from "./Lighting";
+import { SelectionHighlight } from "./SelectionHighlight";
 import { computeModelBounds } from "./cityGeometry";
 import type { CityPayload } from "./types";
 
@@ -40,6 +41,8 @@ export function Scene({ payload }: { payload: CityPayload }) {
       <Ground radius={bounds.radius} />
       <Streets segments={payload.streets} />
       <City buildings={payload.buildings} />
+      {/* Warm additive glow over whichever cluster is picked (selectionStore). */}
+      <SelectionHighlight buildings={payload.buildings} />
       {/* Invented backdrop fabric so the slice reads as part of a larger city;
           low, desaturated, and fog-bound, never measured Toronto. */}
       <Context
