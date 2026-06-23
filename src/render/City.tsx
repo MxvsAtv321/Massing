@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import * as THREE from "three/webgpu";
 import { buildBuildingGeometries } from "./cityGeometry";
+import { buildBuildingClusterMap, buildInstanceClusterIds } from "./cityIndex";
 import type { BuildingForScene } from "../mutation/building";
 
 // The whole static city as one BatchedMesh (ADR-R09): unique per-building
@@ -10,7 +11,7 @@ import type { BuildingForScene } from "../mutation/building";
 // selection and mutation.
 export function City({ buildings }: { buildings: BuildingForScene[] }) {
   const mesh = useMemo(() => {
-    const { geometries } = buildBuildingGeometries(buildings);
+    const { geometries, ids } = buildBuildingGeometries(buildings);
 
     let vertexCount = 0;
     let indexCount = 0;
@@ -45,6 +46,14 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
       color.setHSL(0.08, 0.05 + r * 0.03, 0.4 + r * 0.16);
       batched.setColorAt(instId, color);
     });
+
+    // instanceId -> clusterId, aligned with the addInstance order above so a
+    // raycast batchId resolves straight to a selectable building (4b picking).
+    // ids come from cityGeometry in the same filtered order, so this never drifts.
+    batched.userData.instanceClusterIds = buildInstanceClusterIds(
+      ids,
+      buildBuildingClusterMap(buildings)
+    );
 
     return batched;
   }, [buildings]);

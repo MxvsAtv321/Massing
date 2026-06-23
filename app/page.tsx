@@ -48,6 +48,7 @@ export default async function Page() {
       payload={{
         buildings,
         streets,
+        clusters: model.clusters,
         originLatLon: model.originLatLon,
         metresPerStorey: model.sources.metresPerStorey,
       }}
