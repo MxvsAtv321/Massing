@@ -2,9 +2,11 @@
 
 import { useMemo, useEffect } from "react";
 import * as THREE from "three/webgpu";
+import { useFrame } from "@react-three/fiber";
 import { normalView, positionViewDirection, vec3 } from "three/tsl";
 import { buildBuildingGeometries } from "./cityGeometry";
 import { useSelection, selection } from "./selectionStore";
+import { editRatios } from "./editRatios";
 import type { BuildingForScene } from "../mutation/building";
 
 // A warm Fresnel rim laid over the selected cluster's footprint geometry. A flat
@@ -82,6 +84,13 @@ export function SelectionHighlight({
       }
     };
   }, [group]);
+
+  // Grow the glow with the building during a height edit. Scaling Y about the
+  // group origin (y=0) keeps the base grounded, matching the city's instance
+  // scaling, so the rim tracks the live drag and the committed height.
+  useFrame(() => {
+    if (group) group.scale.y = editRatios.ratioFor(selectedClusterId);
+  });
 
   if (!group) return null;
   return <primitive object={group} />;

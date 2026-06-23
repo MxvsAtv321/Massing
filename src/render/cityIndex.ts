@@ -54,3 +54,31 @@ export function resolveClusterFromBatchId(
   }
   return instanceClusterIds[batchId] || null;
 }
+
+// clusterId -> world [x, z] of the footprint centroid, for anchoring the height
+// gizmo over the building. Mean of every member's outer-ring vertices, mapped
+// from ENU [east, north] to world (x = east, z = -north), matching cityGeometry.
+export function buildClusterCentroids(
+  buildings: BuildingForScene[]
+): Map<string, [number, number]> {
+  const sums = new Map<string, { x: number; z: number; n: number }>();
+  for (const b of buildings) {
+    const outer = b.footprint[0];
+    if (!outer) continue;
+    let s = sums.get(b.clusterId);
+    if (!s) {
+      s = { x: 0, z: 0, n: 0 };
+      sums.set(b.clusterId, s);
+    }
+    for (const [e, n] of outer) {
+      s.x += e;
+      s.z += -n;
+      s.n++;
+    }
+  }
+  const out = new Map<string, [number, number]>();
+  for (const [cid, s] of sums) {
+    if (s.n > 0) out.set(cid, [s.x / s.n, s.z / s.n]);
+  }
+  return out;
+}

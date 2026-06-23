@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useRef } from "react";
 import * as THREE from "three/webgpu";
-import type { ThreeEvent } from "@react-three/fiber";
+import { useFrame, type ThreeEvent } from "@react-three/fiber";
 import { buildBuildingGeometries } from "./cityGeometry";
 import {
   buildBuildingClusterMap,
@@ -10,13 +10,14 @@ import {
   resolveClusterFromBatchId,
 } from "./cityIndex";
 import { selection } from "./selectionStore";
+import { editRatios } from "./editRatios";
 import type { BuildingForScene } from "../mutation/building";
 
 // The whole static city as one BatchedMesh (ADR-R09): unique per-building
 // geometries in a single draw, with per-object identity preserved for later
 // selection and mutation.
 export function City({ buildings }: { buildings: BuildingForScene[] }) {
-  const mesh = useMemo(() => {
+  const { mesh, clusterInstances } = useMemo(() => {
     const { geometries, ids } = buildBuildingGeometries(buildings);
 
     let vertexCount = 0;
@@ -56,13 +57,53 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
     // instanceId -> clusterId, aligned with the addInstance order above so a
     // raycast batchId resolves straight to a selectable building (4b picking).
     // ids come from cityGeometry in the same filtered order, so this never drifts.
-    batched.userData.instanceClusterIds = buildInstanceClusterIds(
+    const instanceClusterIds = buildInstanceClusterIds(
       ids,
       buildBuildingClusterMap(buildings)
     );
+    batched.userData.instanceClusterIds = instanceClusterIds;
 
-    return batched;
+    // Inverse map clusterId -> instanceIds, so a height edit can scale every
+    // instance of a cluster (podium + shaft) together.
+    const clusterInstances = new Map<string, number[]>();
+    instanceClusterIds.forEach((cid, instId) => {
+      if (!cid) return;
+      const arr = clusterInstances.get(cid);
+      if (arr) arr.push(instId);
+      else clusterInstances.set(cid, [instId]);
+    });
+
+    return { mesh: batched, clusterInstances };
   }, [buildings]);
+
+  // Apply per-cluster height edits as per-instance Y-scale matrices (ADR-R11):
+  // the grounded geometry is never rebuilt, so identity, culling, and shadows
+  // survive and there is no rebuild stutter. Only edited or dragged clusters are
+  // touched, and idle frames are skipped via the editRatios version counter.
+  const applied = useRef<Set<string>>(new Set());
+  const lastVersion = useRef(-1);
+  const scaleMatrix = useRef(new THREE.Matrix4());
+  useFrame(() => {
+    const v = editRatios.version();
+    const dragging = editRatios.draggingCluster();
+    if (v === lastVersion.current && dragging === null) return;
+    lastVersion.current = v;
+
+    const target = new Set(editRatios.committedClusterIds());
+    if (dragging) target.add(dragging);
+
+    const next = new Set<string>();
+    const m = scaleMatrix.current;
+    for (const cid of new Set([...target, ...applied.current])) {
+      const insts = clusterInstances.get(cid);
+      if (!insts) continue;
+      const ratio = editRatios.ratioFor(cid);
+      m.makeScale(1, ratio, 1);
+      for (const instId of insts) mesh.setMatrixAt(instId, m);
+      if (ratio !== 1) next.add(cid);
+    }
+    applied.current = next;
+  });
 
   // A click resolves the raycast hit (batchId == instanceId) to its cluster via
   // the userData table built above, with no extra render pass. stopPropagation so
