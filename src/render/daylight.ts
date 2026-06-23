@@ -9,6 +9,7 @@ export type Daylight = {
   intensity: number; // directional light intensity
   ambient: number; // ambient fill intensity
   ambientColor: [number, number, number]; // ambient fill tint, cool at night
+  moonIntensity: number; // cool directional moonlight, ramps in after sundown
   dayFactor: number; // 0 night .. 1 full day
   isNight: boolean; // sun at or below the horizon
 };
@@ -22,10 +23,12 @@ export type SkyGrade = {
 };
 
 const MAX_INTENSITY = 4.2;
-// Day keeps a low ambient so the strong sun stays contrasty; night carries the
-// whole scene on ambient (the sun is off), so it is a moonlit floor, not black.
+// Day keeps a low ambient so the strong sun stays contrasty. At night the sun is
+// off and a cool directional moonlight (MOON_MAX) becomes the key, so ambient is
+// just a floor that keeps the shadowed sides from going black, not the whole show.
 const DAY_AMBIENT = 0.05;
-const NIGHT_AMBIENT = 0.18;
+const NIGHT_AMBIENT = 0.1;
+const MOON_MAX = 0.85; // peak cool moonlight intensity at deep night
 
 // Warm horizon sun toward a cool white overhead sun.
 const SUN_WARM: [number, number, number] = [1.0, 0.78, 0.52];
@@ -50,7 +53,11 @@ export function daylightFor(altitudeDeg: number): Daylight {
   const ambient = lerp(NIGHT_AMBIENT, DAY_AMBIENT, dayFactor);
   const ambientColor = lerp3(MOON_TINT, NEUTRAL_TINT, dayFactor);
 
-  return { color, intensity, ambient, ambientColor, dayFactor, isNight };
+  // Moonlight fades in only after the sun is down: zero above the horizon, full
+  // by ~8 degrees below, so it owns the deep night without fighting the warm dusk.
+  const moonIntensity = MOON_MAX * smoothstep(clamp01(-altitudeDeg / 8));
+
+  return { color, intensity, ambient, ambientColor, moonIntensity, dayFactor, isNight };
 }
 
 // Palette for the procedural sky, blended across night, twilight, and day by

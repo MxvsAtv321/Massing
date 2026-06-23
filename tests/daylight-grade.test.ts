@@ -28,11 +28,10 @@ describe("daylightFor", () => {
     expect(low.color[0] / low.color[2]).toBeGreaterThan(high.color[0] / high.color[2]);
   });
 
-  it("keeps a moonlit ambient floor at night, low fill by day, dayFactor rising into day", () => {
-    // Night has no sun, so ambient carries the scene and must be a visible floor;
-    // day has the strong directional, so its fill stays low for contrast.
+  it("keeps ambient a low floor by day, a touch higher at night, dayFactor rising into day", () => {
+    // Night ambient is only a floor under the moonlight key; day stays low for
+    // contrast under the strong sun.
     expect(daylightFor(-5).ambient).toBeGreaterThan(daylightFor(40).ambient);
-    expect(daylightFor(-5).ambient).toBeGreaterThan(0.1);
     expect(daylightFor(40).ambient).toBeLessThan(0.1);
     expect(daylightFor(0).dayFactor).toBe(0);
     expect(daylightFor(12).dayFactor).toBe(1);
@@ -45,6 +44,13 @@ describe("daylightFor", () => {
     const blueToRed = (c: [number, number, number]) => c[2] / c[0];
     expect(blueToRed(night.ambientColor)).toBeGreaterThan(blueToRed(day.ambientColor));
     expect(day.ambientColor[0]).toBeCloseTo(day.ambientColor[2], 5); // neutral by day
+  });
+
+  it("ramps cool moonlight in after sundown and off by day", () => {
+    expect(daylightFor(-12).moonIntensity).toBeGreaterThan(0.3); // strong deep night
+    expect(daylightFor(30).moonIntensity).toBeLessThan(0.001); // off by day
+    // Deeper below the horizon means more moonlight.
+    expect(daylightFor(-12).moonIntensity).toBeGreaterThan(daylightFor(-2).moonIntensity);
   });
 });
 

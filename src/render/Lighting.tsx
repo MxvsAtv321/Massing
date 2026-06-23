@@ -14,6 +14,12 @@ import type { ModelBounds } from "./types";
 const DATE = "2026-06-21";
 const ENV_INTENSITY = 0.6;
 
+// Stylized moonlight: a fixed high direction (art-directed, not the real moon
+// ephemeris) and a cool blue-white tint, so the night reads as moonlit with real
+// directional shading. Intensity is driven per frame from daylight.moonIntensity.
+const MOON_DIR: [number, number, number] = [0.35, 0.85, 0.4];
+const MOON_COLOR: [number, number, number] = [0.55, 0.68, 1.0];
+
 // Regenerate the sky only when the sun has moved this far, and not more often
 // than this, so PMREM never runs per frame.
 const SKY_ALT_STEP = 0.6; // degrees of altitude
@@ -36,6 +42,7 @@ export function Lighting({
   const scene = useThree((s) => s.scene) as unknown as THREE.Scene;
 
   const lightRef = useRef<THREE.DirectionalLight>(null);
+  const moonRef = useRef<THREE.DirectionalLight>(null);
   const ambientRef = useRef<THREE.AmbientLight>(null);
   const csm = useRef<CSMShadowNode | null>(null);
 
@@ -53,6 +60,8 @@ export function Lighting({
     if (light) {
       light.target.position.set(cx, 0, cz);
       scene.add(light.target);
+      // The moon shares the sun's aim point at the city center.
+      if (moonRef.current) moonRef.current.target = light.target;
     }
     return () => {
       if (light) scene.remove(light.target);
@@ -135,6 +144,21 @@ export function Lighting({
       );
     }
 
+    // Cool directional moonlight from a fixed high angle, faded in after sundown
+    // so night faces catch a key light and read with form, not flat fill. No
+    // shadow map: directional shading alone gives the look and keeps night cheap.
+    const moon = moonRef.current;
+    if (moon) {
+      moon.position.set(
+        cx + MOON_DIR[0] * dist,
+        MOON_DIR[1] * dist,
+        cz + MOON_DIR[2] * dist
+      );
+      moon.intensity = grade.moonIntensity;
+      moon.color.setRGB(MOON_COLOR[0], MOON_COLOR[1], MOON_COLOR[2]);
+      moon.visible = grade.moonIntensity > 0.001;
+    }
+
     const now =
       typeof performance !== "undefined" ? performance.now() : Date.now();
     const moved =
@@ -161,6 +185,8 @@ export function Lighting({
         shadow-camera-bottom={-bounds.radius * 1.6}
         shadow-bias={-0.0004}
       />
+      {/* Cool moonlight; no shadows by decision (form without the night cost). */}
+      <directionalLight ref={moonRef} intensity={0} />
       <ambientLight ref={ambientRef} intensity={0.05} />
     </>
   );
