@@ -28,11 +28,23 @@ describe("daylightFor", () => {
     expect(low.color[0] / low.color[2]).toBeGreaterThan(high.color[0] / high.color[2]);
   });
 
-  it("ambient and dayFactor rise from night into day", () => {
-    expect(daylightFor(40).ambient).toBeGreaterThan(daylightFor(-5).ambient);
+  it("keeps a moonlit ambient floor at night, low fill by day, dayFactor rising into day", () => {
+    // Night has no sun, so ambient carries the scene and must be a visible floor;
+    // day has the strong directional, so its fill stays low for contrast.
+    expect(daylightFor(-5).ambient).toBeGreaterThan(daylightFor(40).ambient);
+    expect(daylightFor(-5).ambient).toBeGreaterThan(0.1);
+    expect(daylightFor(40).ambient).toBeLessThan(0.1);
     expect(daylightFor(0).dayFactor).toBe(0);
     expect(daylightFor(12).dayFactor).toBe(1);
     expect(daylightFor(6).dayFactor).toBeCloseTo(0.5);
+  });
+
+  it("tints the night ambient cool and the day ambient neutral", () => {
+    const night = daylightFor(-5);
+    const day = daylightFor(40);
+    const blueToRed = (c: [number, number, number]) => c[2] / c[0];
+    expect(blueToRed(night.ambientColor)).toBeGreaterThan(blueToRed(day.ambientColor));
+    expect(day.ambientColor[0]).toBeCloseTo(day.ambientColor[2], 5); // neutral by day
   });
 });
 

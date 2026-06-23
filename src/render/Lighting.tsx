@@ -126,7 +126,14 @@ export function Lighting({
       light.color.setRGB(grade.color[0], grade.color[1], grade.color[2]);
       light.visible = grade.intensity > 0.001;
     }
-    if (ambientRef.current) ambientRef.current.intensity = grade.ambient;
+    if (ambientRef.current) {
+      ambientRef.current.intensity = grade.ambient;
+      ambientRef.current.color.setRGB(
+        grade.ambientColor[0],
+        grade.ambientColor[1],
+        grade.ambientColor[2]
+      );
+    }
 
     const now =
       typeof performance !== "undefined" ? performance.now() : Date.now();
