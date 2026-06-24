@@ -9,10 +9,12 @@ import { TrafficCPU } from "./TrafficCPU";
 import { carLightGain } from "./carLook";
 import { daylightLive } from "./daylightStore";
 
-// GPU compute path: ~40k agents advected entirely on the GPU (ADR-R12). If the
-// kernel cannot be built it returns null and we fall back to the CPU path, so a
-// problem degrades gracefully instead of black-screening (ADR-R01).
-const AGENT_COUNT = 40000;
+// GPU compute path: agents advected entirely on the GPU (ADR-R12). If the kernel
+// cannot be built it returns null and we fall back to the CPU path, so a problem
+// degrades gracefully instead of black-screening (ADR-R01). The count is tuned for
+// the look, not the limit: enough cars to read as flowing traffic with real gaps
+// between them, not bumper-to-bumper. The kernel scales far past this.
+const AGENT_COUNT = 5000;
 const SEED = 90210;
 
 export function TrafficGPU({ network }: { network: AgentGraphData }) {

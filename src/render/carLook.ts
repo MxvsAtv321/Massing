@@ -19,14 +19,17 @@ export const CAR_LEN = 5.0;
 
 // A car is a coloured body with small lights at its two ends, not a glowing block:
 // the front ~25% is a cool-white headlight cap, the rear ~25% a red taillight cap,
-// and the middle is painted bodywork. Both lamps are HDR so the bloom catches them
-// as light trails; the paint stays a steady mid value so the car silhouette reads in
-// daylight. The caps are read straight from the car's local Z (depth = travel
-// forward), so they need no per-instance data and work unchanged on the CPU path.
-const HEAD: [number, number, number] = [1.7, 1.8, 2.1];
-const TAIL: [number, number, number] = [2.1, 0.14, 0.05];
-const PAINT_DARK = 0.22; // darkest car paint value
-const PAINT_LIGHT = 0.92; // lightest car paint value
+// and the middle is painted bodywork. The lamps are deliberately restrained: barely
+// over 1.0 at night for a gentle glow, under 1.0 by day, so a street of cars never
+// blooms into a continuous neon tube. The massing model is the subject; traffic is
+// ambient life inside its visual language. Caps are read straight from the car's
+// local Z (depth = travel forward), so they need no per-instance data and work
+// unchanged on the CPU path. Bodies are muted greys so cars read as vehicles on the
+// asphalt, not bright blocks competing with the buildings.
+const HEAD: [number, number, number] = [0.9, 0.95, 1.1];
+const TAIL: [number, number, number] = [1.05, 0.1, 0.04];
+const PAINT_DARK = 0.16; // darkest car paint value
+const PAINT_LIGHT = 0.55; // lightest car paint value
 
 export function carGeometry(): THREE.BoxGeometry {
   // Depth (z) is the long axis = travel forward; matches the heading rotation in
@@ -65,10 +68,10 @@ export function headTailColor() {
   };
 }
 
-// Lamps stay clearly lit by day (so traffic reads against the bright sunlit scene)
-// and bloom harder at night. dayFactor is 0 night .. 1 full day.
+// Lamps are a faint accent by day and a gentle glow at night, never a bloom bomb.
+// dayFactor is 0 night .. 1 full day.
 export function carLightGain(dayFactor: number): number {
-  return 0.85 + 0.75 * (1 - clamp01(dayFactor));
+  return 0.5 + 0.6 * (1 - clamp01(dayFactor));
 }
 
 function clamp01(x: number): number {
