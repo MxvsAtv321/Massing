@@ -78,3 +78,20 @@ export function buildStreetGeometry(segments: StreetSegment[]): THREE.BufferGeom
   geo.setIndex(indices);
   return geo;
 }
+
+// Per-vertex congestion colours for a fresh flow solve, in the exact vertex order
+// buildStreetGeometry emits (2 vertices per polyline point, segments with < 2 points
+// skipped). Lets the live re-tint (5e) overwrite the attribute in place. perStreet is
+// parallel to segments; a missing entry falls back to the segment's baked value.
+export function congestionVertexArray(
+  segments: StreetSegment[],
+  perStreet: number[]
+): Float32Array {
+  const out: number[] = [];
+  segments.forEach((seg, i) => {
+    if (seg.path.length < 2) return;
+    const [er, eg, eb] = congestionEmissive(perStreet[i] ?? seg.congestion);
+    for (let v = 0; v < seg.path.length * 2; v++) out.push(er, eg, eb);
+  });
+  return new Float32Array(out);
+}

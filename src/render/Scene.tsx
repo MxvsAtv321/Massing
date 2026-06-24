@@ -19,6 +19,7 @@ import {
 import { committedRatio } from "./heightEdit";
 import { editRatios } from "./editRatios";
 import { editHud } from "./editHud";
+import { createFlowEngine, type EditedCluster } from "./flowEngine";
 import { useSelection } from "./selectionStore";
 import { useEditLayer } from "../mutation/editState";
 import type { CityPayload } from "./types";
@@ -57,6 +58,18 @@ export function Scene({ payload }: { payload: CityPayload }) {
   const { overlay, applyOp, undo } = editLayer;
   const { selectedClusterId } = useSelection();
 
+  // Client flow re-solver (5e): re-runs the BPR flow on each committed edit with the
+  // edited buildings' generated trips, then re-tints the roads and (5e-3) the agents.
+  const flowEngine = useMemo(
+    () =>
+      createFlowEngine(
+        payload.reactive,
+        clusterRepHeights,
+        payload.metresPerStorey
+      ),
+    [payload.reactive, clusterRepHeights, payload.metresPerStorey]
+  );
+
   useEffect(() => {
     const r = bounds.radius;
     camera.position.set(cx + r * 1.2, r * 0.85, cz + r * 1.2);
@@ -66,14 +79,19 @@ export function Scene({ payload }: { payload: CityPayload }) {
     camera.updateProjectionMatrix();
   }, [bounds, camera, cx, cz]);
 
-  // Mirror committed edits into the renderer's per-cluster ratio store.
+  // Mirror committed edits into the renderer's per-cluster ratio store, and re-solve
+  // the flow with the same edits so the roads (and agents) react.
   useEffect(() => {
     const map = new Map<string, number>();
+    const edited: EditedCluster[] = [];
     for (const [cid, newRep] of overlay.modifiedClusterHeights) {
-      map.set(cid, committedRatio(newRep, clusterRepHeights.get(cid) ?? 0));
+      const ratio = committedRatio(newRep, clusterRepHeights.get(cid) ?? 0);
+      map.set(cid, ratio);
+      edited.push({ clusterId: cid, ratio });
     }
     editRatios.setCommitted(map);
-  }, [overlay, clusterRepHeights]);
+    flowEngine.resolve(edited);
+  }, [overlay, clusterRepHeights, flowEngine]);
 
   // Publish the selected building's storey count to the DOM readout. The gizmo
   // overrides this live during a drag; here it tracks selection and commits.
@@ -106,7 +124,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
       <fogExp2 attach="fog" args={["#241a14", 0.18 / Math.max(bounds.radius, 1)]} />
       <Lighting originLatLon={payload.originLatLon} bounds={bounds} />
       <Ground radius={bounds.radius} />
-      <Streets segments={payload.streets} />
+      <Streets segments={payload.streets} flow={flowEngine} />
       {/* Living traffic: glowing capsules advected on the directed graph at the
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} />
