@@ -5,17 +5,19 @@ import { positionLocal, vec3, mix, smoothstep, uniform } from "three/tsl";
 // and CPU fallback): one box geometry and one head/tail-light colour, so the cars
 // read the same wherever they run.
 
-export const CAR_W = 2.0;
-export const CAR_H = 1.4;
-export const CAR_LEN = 4.6;
+export const CAR_W = 2.2;
+export const CAR_H = 1.5;
+export const CAR_LEN = 5.0;
 
 // Cool-white headlights lead, warm-red taillights trail, both HDR so the bloom
 // catches them as light trails. The split is read straight from the car's local Z
 // (depth = travel forward), so it needs no per-instance data and works unchanged on
 // the CPU path. The body between the lamps blends red->white along the length, which
 // at city scale reads as a moving light streak, the iconic night-traffic look.
-const HEAD: [number, number, number] = [1.3, 1.45, 1.8];
-const TAIL: [number, number, number] = [1.9, 0.16, 0.07];
+// Headlights are pushed bright and near-white so they pop against the warm-tinted
+// congestion roads (a different colour register) and stay legible even in daylight.
+const HEAD: [number, number, number] = [1.7, 1.8, 2.1];
+const TAIL: [number, number, number] = [2.1, 0.14, 0.05];
 
 export function carGeometry(): THREE.BoxGeometry {
   // Depth (z) is the long axis = travel forward; matches the heading rotation in
@@ -44,9 +46,10 @@ export function headTailColor() {
   };
 }
 
-// Lamps are faint by day and bloom at night. dayFactor is 0 night .. 1 full day.
+// Lamps stay clearly lit by day (so traffic reads against the bright sunlit scene)
+// and bloom harder at night. dayFactor is 0 night .. 1 full day.
 export function carLightGain(dayFactor: number): number {
-  return 0.3 + 0.9 * (1 - clamp01(dayFactor));
+  return 0.85 + 0.75 * (1 - clamp01(dayFactor));
 }
 
 function clamp01(x: number): number {
