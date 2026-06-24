@@ -172,6 +172,34 @@ export function assignOnce(
 }
 
 // ---------------------------------------------------------------------------
+// Cheap single-run solve for live reactivity: the nominal assignment only, no
+// uncertainty ensemble. Returns per-edge v/c and congested speed. Used to re-solve
+// flow in the browser on every city edit, where the band is not needed and latency
+// is the constraint (one assignOnce instead of the ensemble's nine).
+// ---------------------------------------------------------------------------
+
+export type EdgeFlowLite = { vc: number; speedKph: number };
+
+export function solveFlowLite(
+  graph: RoutableGraph,
+  od: ODNodeFlow[],
+  params: AssignParams = DEFAULT_ASSIGN_PARAMS
+): Map<string, EdgeFlowLite> {
+  const { edges } = graph;
+  const { volume } = assignOnce(graph, od, params);
+  const out = new Map<string, EdgeFlowLite>();
+  for (let i = 0; i < edges.length; i++) {
+    const e = edges[i];
+    const t0 = freeFlowTimeSec(e);
+    const cap = edgeCapacity(e, params, 1);
+    const vc = cap > 0 ? volume[i] / cap : 0;
+    const speedKph = congestedSpeedKph(e, t0, volume[i], cap, params);
+    out.set(e.id, { vc, speedKph });
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
 // Assignment with a capacity-uncertainty band (Monte Carlo ensemble).
 // ---------------------------------------------------------------------------
 
