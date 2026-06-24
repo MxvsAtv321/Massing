@@ -18,7 +18,13 @@ import type { BuildingForScene } from "../mutation/building";
 // The whole static city as one BatchedMesh (ADR-R09): unique per-building
 // geometries in a single draw, with per-object identity preserved for later
 // selection and mutation.
-export function City({ buildings }: { buildings: BuildingForScene[] }) {
+export function City({
+  buildings,
+  metresPerStorey,
+}: {
+  buildings: BuildingForScene[];
+  metresPerStorey: number;
+}) {
   const { mesh, clusterInstances, updateWindows } = useMemo(() => {
     const { geometries, ids } = buildBuildingGeometries(buildings);
 
@@ -35,8 +41,9 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
       metalness: 0.0,
     });
     // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
-    // dusk via the shared daylight factor and bloom in the existing post stack.
-    const windows = buildWindowEmissiveNode();
+    // dusk via the shared daylight factor and bloom in the existing post stack. Floor
+    // pitch is the model's real storey height, so window rows align to storeys.
+    const windows = buildWindowEmissiveNode({ metresPerStorey });
     material.emissiveNode = windows.emissiveNode;
 
     const batched = new THREE.BatchedMesh(
@@ -80,7 +87,7 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
     });
 
     return { mesh: batched, clusterInstances, updateWindows: windows.update };
-  }, [buildings]);
+  }, [buildings, metresPerStorey]);
 
   // Apply per-cluster height edits as per-instance Y-scale matrices (ADR-R11):
   // the grounded geometry is never rebuilt, so identity, culling, and shadows

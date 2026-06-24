@@ -128,7 +128,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Living traffic: glowing capsules advected on the directed graph at the
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
-      <City buildings={payload.buildings} />
+      <City buildings={payload.buildings} metresPerStorey={payload.metresPerStorey} />
       {/* Warm additive glow over whichever cluster is picked (selectionStore). */}
       <SelectionHighlight buildings={payload.buildings} />
       {/* Y-scale gizmo on the selected building; commits a ModifyBuilding op. */}
