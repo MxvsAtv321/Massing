@@ -1,5 +1,5 @@
 import {
-  positionGeometry,
+  positionWorld,
   normalLocal,
   hash,
   select,
@@ -12,15 +12,18 @@ import {
 } from "three/tsl";
 
 // Nightfall window lights (Unit 6): a procedural emissive contribution for the city
-// material, evaluated in the fragment stage. Windows are a grid laid in object space
-// from positionGeometry (the raw vertex position, before the batch Y-scale matrix, so
-// it is the true height-above-grade in metres and does not stretch under a height
-// edit, ADR-R11). Walls are masked from roofs by normal; each cell is lit/unlit by a
-// stable hash so the scatter is mostly dark and varies building to building (the world
-// coords baked into the geometry de-correlate it for free). The whole term ramps on at
-// dusk via the shared daylightLive factor and sits above 1.0 so the existing bloom
-// catches it. No new geometry, no draw call, no compute: pure material math, identical
-// on both backends. The buildings stay the subject; this lights the massing itself.
+// material, evaluated in the fragment stage. Windows are a grid laid from positionWorld
+// (the post-transform world position, which carries the per-instance Y-scale that a
+// height edit applies, ADR-R11). Keying the floor rows off world height means a raised
+// building gains more rows of windows as it grows, rather than stretching the existing
+// ones: positionWorld.y = the geometry's real metres times the edit ratio, so floors
+// fill in. At rest (ratio 1) it equals the raw geometry height, so the look is
+// unchanged. Walls are masked from roofs by normal; each cell is lit/unlit by a stable
+// hash so the scatter is mostly dark and varies building to building (world coords
+// de-correlate it for free). The term ramps on at dusk via the shared daylightLive
+// factor and sits above 1.0 so the existing bloom catches it. No new geometry, no draw
+// call, no compute: pure material math, identical on both backends. The buildings stay
+// the subject; this lights the massing itself.
 
 export type WindowDefaults = {
   floorPitch: number; // metres per window row; ties to metresPerStorey
@@ -71,13 +74,14 @@ export function buildWindowEmissiveNode(opts: WindowNodeOptions = {}) {
   const nightU = uniform(0);
   const timeU = uniform(0); // seconds, for the slow occasional on/off
 
-  const pos = positionGeometry;
+  const pos = positionWorld;
   const nrm = normalLocal;
 
   // Wall faces only; roofs and the base cap stay dark.
   const wall = smoothstep(0.5, 0.2, abs(nrm.y));
 
-  // Along-wall coordinate: a wall facing mostly X runs along Z, and vice versa.
+  // Along-wall coordinate: a wall facing mostly X runs along Z, and vice versa. X and
+  // Z are unscaled by a height edit, so bays stay put; only the floor rows below grow.
   const horiz = select(abs(nrm.x).greaterThan(abs(nrm.z)), pos.z, pos.x);
   const floorC = pos.y.div(floorPitch);
   const bayC = horiz.div(d.bayPitch);
@@ -195,15 +199,16 @@ export function wallMask(absNormalY: number): number {
   return smoothstepScalar(0.5, 0.2, absNormalY);
 }
 
-// Floor coordinate under a live height-edit ratio (used by the node in 6.4): the
-// world floor pitch is floorPitch * ratio, so dividing by it keeps rows a constant
-// real height and makes a taller building gain rows rather than stretch them.
+// Floor coordinate under a live height-edit ratio. Mirrors the node, which keys off
+// positionWorld.y = the raw geometry height (positionY) times the edit ratio. So a
+// taller building (larger ratio) yields a larger coordinate and thus more rows below
+// a given vertex: floors fill in rather than the existing windows stretching.
 export function floorCoord(
   positionY: number,
   floorPitch: number,
   ratio: number
 ): number {
-  return positionY / (floorPitch * Math.max(ratio, 1e-3));
+  return (positionY * ratio) / floorPitch;
 }
 
 function smoothstepScalar(edge0: number, edge1: number, x: number): number {

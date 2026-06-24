@@ -80,13 +80,13 @@ describe("floorCoord", () => {
   });
 
   it("adds rows under a taller edit rather than stretching them", () => {
-    // Doubling the ratio halves the floor coordinate, so a fixed world height holds
-    // twice as many rows: raising a building fills in floors.
-    expect(floorCoord(30, 3, 2)).toBeCloseTo(5, 6);
+    // Doubling the ratio doubles the floor coordinate: the building's world height
+    // doubles and holds twice as many rows. Raising a building fills in floors.
+    expect(floorCoord(30, 3, 2)).toBeCloseTo(20, 6);
   });
 
-  it("guards against a zero ratio", () => {
-    expect(Number.isFinite(floorCoord(30, 3, 0))).toBe(true);
+  it("is zero at the base regardless of ratio", () => {
+    expect(floorCoord(0, 3, 5)).toBe(0);
   });
 });
 
