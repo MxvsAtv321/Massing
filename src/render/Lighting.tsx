@@ -8,6 +8,7 @@ import { sunAtMinutes } from "./sunInstant";
 import { daylightFor, skyGradeFor } from "./daylight";
 import { updateProceduralSky, type SkyHandle } from "./environment";
 import { dayClock } from "./dayClockStore";
+import { daylightLive } from "./daylightStore";
 import type { ModelBounds } from "./types";
 
 // The day runs on 2026-06-21 for now; a date picker is a later beat (Unit 3a).
@@ -111,6 +112,9 @@ export function Lighting({
     const sun = sunAtMinutes(originLatLon, DATE, minutes);
     const grade = daylightFor(sun.altitude);
     const skyGrade = skyGradeFor(sun.altitude);
+    // Publish the live day factor so traffic (and later window lights) can ramp
+    // their emissive at dusk without recomputing the sun or advancing the clock.
+    daylightLive.dayFactor = grade.dayFactor;
 
     // Haze takes the hue of the sky horizon so the distance blend matches the
     // dome, but heavily darkened so it reads as depth, not a bright wall washing

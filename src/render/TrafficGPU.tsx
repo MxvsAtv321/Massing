@@ -6,6 +6,8 @@ import { useThree, useFrame } from "@react-three/fiber";
 import { buildAgentGraph, type AgentGraphData } from "../sim/agentGraph";
 import { createTrafficCompute } from "./trafficCompute";
 import { TrafficCPU } from "./TrafficCPU";
+import { carLightGain } from "./carLook";
+import { daylightLive } from "./daylightStore";
 
 // GPU compute path: ~40k agents advected entirely on the GPU (ADR-R12). If the
 // kernel cannot be built it returns null and we fall back to the CPU path, so a
@@ -22,7 +24,7 @@ export function TrafficGPU({ network }: { network: AgentGraphData }) {
   );
 
   useFrame((_, delta) => {
-    if (system) system.update(delta);
+    if (system) system.update(delta, carLightGain(daylightLive.dayFactor));
   });
 
   if (!system) return <TrafficCPU network={network} />;

@@ -15,16 +15,15 @@ import {
 import { type AgentGraph } from "../sim/agentGraph";
 import { buildGpuGraph } from "../sim/graphGpu";
 import { spawnAgents } from "../sim/agents";
+import { carGeometry, headTailColor } from "./carLook";
 
 export type TrafficSystem = {
   mesh: THREE.InstancedMesh;
-  update: (dt: number) => void;
+  update: (dt: number, lightGain: number) => void;
 };
 
 const Y_CAR = 0.9;
 const MAX_DT = 1 / 30;
-const FREE = [0.6, 0.8, 1.3] as const; // cool, free-flowing (HDR)
-const JAM = [1.5, 0.3, 0.15] as const; // warm red, crawling (HDR)
 
 // Build the GPU-resident agent system (ADR-R06/R12): SoA storage buffers advanced
 // by a TSL compute kernel each frame, drawn as one InstancedMesh whose position,
@@ -79,6 +78,7 @@ export function createTrafficCompute(
     const csrEdg = instancedArray(g.csrEdges, "uint");
 
     const dtU = uniform(0.016);
+    const look = headTailColor(); // shared head/tail colour + light-gain setter
 
     // Compute: advance distance at the edge speed, then hand off across at most a
     // few intersections per tick, picking a downstream edge from CSR adjacency by
@@ -112,9 +112,9 @@ export function createTrafficCompute(
       aSeed.element(i).assign(sd);
     })().compute(count);
 
-    // Render: derive the world point, heading, and speed ratio from the current
-    // edge + distance, orient the capsule along travel, place it. Unlit and
-    // untonemapped so the HDR colours bloom.
+    // Render: derive the world point and heading from the current edge + distance,
+    // orient the car along travel, place it. Colour is the shared head/tail look,
+    // unlit and untonemapped so the HDR lamps bloom.
     const material = new THREE.MeshBasicNodeMaterial();
     material.toneMapped = false;
     material.positionNode = Fn(() => {
@@ -135,20 +135,9 @@ export function createTrafficCompute(
       const zr = p.z.mul(dir.y).sub(p.x.mul(dir.x));
       return vec3(xr, p.y, zr).add(vec3(flat.x, float(Y_CAR), flat.y));
     })();
-    {
-      const ed = aEdgeDist.element(instanceIndex);
-      const ei = uint(ed.x.add(0.5));
-      const dat = edgeData.element(ei);
-      const ratio = dat.y.div(dat.z.max(float(0.01))).clamp(0, 1);
-      material.colorNode = mix(
-        vec3(JAM[0], JAM[1], JAM[2]),
-        vec3(FREE[0], FREE[1], FREE[2]),
-        ratio
-      );
-    }
+    material.colorNode = look.colorNode;
 
-    const geo = new THREE.CapsuleGeometry(1.0, 2.8, 4, 8);
-    geo.rotateX(Math.PI / 2); // long axis along +Z (travel forward)
+    const geo = carGeometry();
     const mesh = new THREE.InstancedMesh(geo, material, count);
     mesh.frustumCulled = false; // positions live in storage, not in the bounds
     // InstancedMesh seeds instanceMatrix to zeros, which would collapse every
@@ -160,8 +149,9 @@ export function createTrafficCompute(
 
     return {
       mesh,
-      update: (dt: number) => {
+      update: (dt: number, lightGain: number) => {
         dtU.value = Math.min(dt, MAX_DT);
+        look.setGain(lightGain);
         renderer.compute(advect);
       },
     };
