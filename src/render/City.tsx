@@ -11,13 +11,15 @@ import {
 } from "./cityIndex";
 import { selection } from "./selectionStore";
 import { editRatios } from "./editRatios";
+import { buildWindowEmissiveNode } from "./windowLights";
+import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
 
 // The whole static city as one BatchedMesh (ADR-R09): unique per-building
 // geometries in a single draw, with per-object identity preserved for later
 // selection and mutation.
 export function City({ buildings }: { buildings: BuildingForScene[] }) {
-  const { mesh, clusterInstances } = useMemo(() => {
+  const { mesh, clusterInstances, setNight } = useMemo(() => {
     const { geometries, ids } = buildBuildingGeometries(buildings);
 
     let vertexCount = 0;
@@ -32,6 +34,10 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
       roughness: 0.82,
       metalness: 0.0,
     });
+    // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
+    // dusk via the shared daylight factor and bloom in the existing post stack.
+    const windows = buildWindowEmissiveNode();
+    material.emissiveNode = windows.emissiveNode;
 
     const batched = new THREE.BatchedMesh(
       geometries.length,
@@ -73,7 +79,7 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
       else clusterInstances.set(cid, [instId]);
     });
 
-    return { mesh: batched, clusterInstances };
+    return { mesh: batched, clusterInstances, setNight: windows.setNight };
   }, [buildings]);
 
   // Apply per-cluster height edits as per-instance Y-scale matrices (ADR-R11):
@@ -84,6 +90,10 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
   const lastVersion = useRef(-1);
   const scaleMatrix = useRef(new THREE.Matrix4());
   useFrame(() => {
+    // Ramp the window lights with the live daylight factor every frame, before the
+    // edit early-out below (which only runs when something is actually being edited).
+    setNight(daylightLive.dayFactor);
+
     const v = editRatios.version();
     const dragging = editRatios.draggingCluster();
     if (v === lastVersion.current && dragging === null) return;
