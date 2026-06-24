@@ -12,7 +12,7 @@ import {
   vec3,
   mix,
 } from "three/tsl";
-import { sampleEdge, type AgentGraph } from "../sim/agentGraph";
+import { type AgentGraph } from "../sim/agentGraph";
 import { buildGpuGraph } from "../sim/graphGpu";
 import { spawnAgents } from "../sim/agents";
 
@@ -28,8 +28,14 @@ const JAM = [1.5, 0.3, 0.15] as const; // warm red, crawling (HDR)
 
 // Build the GPU-resident agent system (ADR-R06/R12): SoA storage buffers advanced
 // by a TSL compute kernel each frame, drawn as one InstancedMesh whose position,
-// heading, and colour are read from the buffers. WebGPU only. Returns null on any
-// build failure so the caller can fall back to the CPU path (ADR-R01 guard).
+// heading, and colour are derived in the shader from the buffers. WebGPU only.
+// Returns null on any build failure so the caller falls back to the CPU path.
+//
+// WebGPU caps storage buffers at 8 per shader stage (maxStorageBuffersPerShaderStage),
+// so the layout is packed to stay well under: compute reads/writes only the agent
+// STATE (edge+dist, seed) plus the graph it needs to advect (edgeData, CSR), and the
+// render derives position/heading/colour from state + geometry. Compute uses 5
+// buffers, the vertex stage 3, the fragment stage 2.
 export function createTrafficCompute(
   renderer: THREE.WebGPURenderer,
   graph: AgentGraph,
@@ -41,56 +47,56 @@ export function createTrafficCompute(
     if (g.edgeCount === 0) return null;
     const init = spawnAgents(graph, count, seed);
 
-    // Agent state (read + written each tick).
-    const aEdge = instancedArray(Uint32Array.from(init.edge), "uint");
-    const aDist = instancedArray(init.dist, "float");
-    const aSeed = instancedArray(init.seed, "uint");
-    // Render outputs (written by the kernel, read by the material). Seeded from
-    // the spawn state so agents are visible at their start points even before the
-    // first compute, and so a stalled compute degrades to static-but-placed cars
-    // (not a clump at the origin) which also makes the failure mode diagnosable.
-    const pos0 = new Float32Array(count * 3);
-    const dir0 = new Float32Array(count * 2);
-    const ratio0 = new Float32Array(count);
+    // Agent state, packed: (edgeIndex as float, distance along edge) + PRNG seed.
+    // Edge indices are small integers, exact in f32 well below 2^24, so storing the
+    // index as a float lets edge+dist share one vec2 buffer instead of two.
+    const state = new Float32Array(count * 2);
     for (let a = 0; a < count; a++) {
-      const e = graph.edges[init.edge[a]];
-      const s = sampleEdge(e, init.dist[a]);
-      pos0[3 * a] = s.x;
-      pos0[3 * a + 1] = Y_CAR;
-      pos0[3 * a + 2] = s.z;
-      dir0[2 * a] = s.dirX;
-      dir0[2 * a + 1] = s.dirZ;
-      ratio0[a] = e.freeMps > 0 ? Math.min(1, e.speedMps / e.freeMps) : 1;
+      state[2 * a] = init.edge[a];
+      state[2 * a + 1] = init.dist[a];
     }
-    const aPos = instancedArray(pos0, "vec3");
-    const aDir = instancedArray(dir0, "vec2"); // (sinθ, cosθ) = (dirX, dirZ)
-    const aRatio = instancedArray(ratio0, "float");
-    // Static graph, seeded from typed arrays (count inferred from length).
-    const eP0 = instancedArray(g.edgeP0, "vec2");
-    const eP1 = instancedArray(g.edgeP1, "vec2");
-    const eLen = instancedArray(g.edgeLen, "float");
-    const eSpeed = instancedArray(g.edgeSpeed, "float");
-    const eFree = instancedArray(g.edgeFree, "float");
-    const eTo = instancedArray(g.edgeTo, "uint");
+    const aEdgeDist = instancedArray(state, "vec2");
+    const aSeed = instancedArray(init.seed, "uint");
+
+    // Static graph, packed to vec4s. edgeSeg holds the straight-edge endpoints
+    // (world x,z of P0 then P1); edgeData holds (length, speed, free, toNode).
+    const E = g.edgeCount;
+    const seg = new Float32Array(E * 4);
+    const data = new Float32Array(E * 4);
+    for (let e = 0; e < E; e++) {
+      seg[4 * e] = g.edgeP0[2 * e];
+      seg[4 * e + 1] = g.edgeP0[2 * e + 1];
+      seg[4 * e + 2] = g.edgeP1[2 * e];
+      seg[4 * e + 3] = g.edgeP1[2 * e + 1];
+      data[4 * e] = g.edgeLen[e];
+      data[4 * e + 1] = g.edgeSpeed[e];
+      data[4 * e + 2] = g.edgeFree[e];
+      data[4 * e + 3] = g.edgeTo[e];
+    }
+    const edgeSeg = instancedArray(seg, "vec4"); // render only
+    const edgeData = instancedArray(data, "vec4");
     const csrOff = instancedArray(g.csrOffset, "uint");
     const csrEdg = instancedArray(g.csrEdges, "uint");
 
     const dtU = uniform(0.016);
 
+    // Compute: advance distance at the edge speed, then hand off across at most a
+    // few intersections per tick, picking a downstream edge from CSR adjacency by
+    // PRNG. Writes only the packed state back. (5 storage buffers.)
     const advect = Fn(() => {
       const i = instanceIndex;
-      const ei = aEdge.element(i).toVar();
-      const d = aDist.element(i).toVar();
+      const ed = aEdgeDist.element(i);
+      const ei = uint(ed.x.add(0.5)).toVar();
+      const d = ed.y.toVar();
       const sd = aSeed.element(i).toVar();
 
-      d.addAssign(eSpeed.element(ei).mul(dtU));
+      d.addAssign(edgeData.element(ei).y.mul(dtU)); // speed * dt
 
-      // Bounded handoff, unrolled (no GPU loop): cross at most a few intersections
-      // per tick, choosing a downstream edge from the CSR adjacency by PRNG.
       for (let iter = 0; iter < 4; iter++) {
-        If(d.greaterThanEqual(eLen.element(ei)), () => {
-          d.subAssign(eLen.element(ei));
-          const toNode = eTo.element(ei);
+        const len = edgeData.element(ei).x.toVar();
+        If(d.greaterThanEqual(len), () => {
+          d.subAssign(len);
+          const toNode = uint(edgeData.element(ei).w.add(0.5));
           const off0 = csrOff.element(toNode).toVar();
           const outCount = csrOff.element(toNode.add(uint(1))).sub(off0);
           If(outCount.greaterThan(uint(0)), () => {
@@ -102,44 +108,46 @@ export function createTrafficCompute(
         });
       }
 
-      aEdge.element(i).assign(ei);
-      aDist.element(i).assign(d);
+      aEdgeDist.element(i).assign(vec2(float(ei), d));
       aSeed.element(i).assign(sd);
-
-      // Straight-edge sample for position, heading, and speed ratio (for colour).
-      const p0 = eP0.element(ei);
-      const p1 = eP1.element(ei);
-      const len = eLen.element(ei);
-      const t = d.div(len).clamp(0, 1);
-      const pos = mix(p0, p1, t);
-      const delta = p1.sub(p0);
-      const dir = delta.div(delta.length().max(float(1e-4)));
-      aPos.element(i).assign(vec3(pos.x, float(Y_CAR), pos.y));
-      aDir.element(i).assign(dir);
-      aRatio.element(i).assign(
-        eSpeed.element(ei).div(eFree.element(ei).max(float(0.01))).clamp(0, 1)
-      );
     })().compute(count);
 
-    // Render: orient the capsule along its heading and place it at its world point;
-    // colour grades JAM -> FREE by speed ratio. Unlit + untonemapped so it blooms.
+    // Render: derive the world point, heading, and speed ratio from the current
+    // edge + distance, orient the capsule along travel, place it. Unlit and
+    // untonemapped so the HDR colours bloom.
     const material = new THREE.MeshBasicNodeMaterial();
     material.toneMapped = false;
     material.positionNode = Fn(() => {
+      const ed = aEdgeDist.element(instanceIndex);
+      const ei = uint(ed.x.add(0.5));
+      const d = ed.y;
+      const s = edgeSeg.element(ei);
+      const p0 = s.xy;
+      const p1 = s.zw;
+      const len = edgeData.element(ei).x.max(float(1e-4));
+      const t = d.div(len).clamp(0, 1);
+      const flat = mix(p0, p1, t);
+      const delta = p1.sub(p0);
+      const dir = delta.div(delta.length().max(float(1e-4))); // (dirX, dirZ)
+
       const p = positionLocal;
-      const dir = aDir.element(instanceIndex); // (sinθ, cosθ)
-      const wp = aPos.element(instanceIndex);
       const xr = p.x.mul(dir.y).add(p.z.mul(dir.x));
       const zr = p.z.mul(dir.y).sub(p.x.mul(dir.x));
-      return vec3(xr, p.y, zr).add(wp);
+      return vec3(xr, p.y, zr).add(vec3(flat.x, float(Y_CAR), flat.y));
     })();
-    material.colorNode = mix(
-      vec3(JAM[0], JAM[1], JAM[2]),
-      vec3(FREE[0], FREE[1], FREE[2]),
-      aRatio.element(instanceIndex)
-    );
+    {
+      const ed = aEdgeDist.element(instanceIndex);
+      const ei = uint(ed.x.add(0.5));
+      const dat = edgeData.element(ei);
+      const ratio = dat.y.div(dat.z.max(float(0.01))).clamp(0, 1);
+      material.colorNode = mix(
+        vec3(JAM[0], JAM[1], JAM[2]),
+        vec3(FREE[0], FREE[1], FREE[2]),
+        ratio
+      );
+    }
 
-    const geo = new THREE.CapsuleGeometry(0.9, 2.2, 4, 8);
+    const geo = new THREE.CapsuleGeometry(1.0, 2.8, 4, 8);
     geo.rotateX(Math.PI / 2); // long axis along +Z (travel forward)
     const mesh = new THREE.InstancedMesh(geo, material, count);
     mesh.frustumCulled = false; // positions live in storage, not in the bounds
