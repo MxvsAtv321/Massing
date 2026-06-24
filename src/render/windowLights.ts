@@ -6,6 +6,7 @@ import {
   smoothstep,
   step,
   abs,
+  mix,
   vec3,
   uniform,
 } from "three/tsl";
@@ -28,7 +29,13 @@ export type WindowDefaults = {
   emissivePeak: number; // HDR peak emissive of a lit pane (> 1: blooms)
   paneInsetV: [number, number]; // lit band within a cell, vertical
   paneInsetH: [number, number]; // lit band within a cell, horizontal
-  warmPale: [number, number, number]; // window tint (warm white)
+  warmHot: [number, number, number]; // deep amber tint
+  warmPale: [number, number, number]; // pale warm-white tint
+  coolTint: [number, number, number]; // rare fluorescent/TV blue accent
+  coolFraction: number; // fraction of lit windows that read cool
+  brightJitter: number; // per-window emissive jitter, +/- this fraction
+  dynamicFraction: number; // fraction of windows that slowly switch over the night
+  toggleRate: number; // switch ticks per second (low: occasional, not a flicker)
   rampStart: number; // dayFactor at/below which windows are full on
   rampEnd: number; // dayFactor at/above which windows are off
 };
@@ -40,7 +47,13 @@ export const WINDOW_DEFAULTS: WindowDefaults = {
   emissivePeak: 2.2,
   paneInsetV: [0.18, 0.82],
   paneInsetH: [0.22, 0.78],
-  warmPale: [1.0, 0.82, 0.55],
+  warmHot: [1.0, 0.6, 0.28],
+  warmPale: [1.0, 0.85, 0.6],
+  coolTint: [0.75, 0.86, 1.05],
+  coolFraction: 0.07,
+  brightJitter: 0.3,
+  dynamicFraction: 0.1,
+  toggleRate: 0.05, // a window can change at most ~every 20s, staggered per window
   rampStart: 0.05,
   rampEnd: 0.35,
 };
@@ -56,6 +69,7 @@ export function buildWindowEmissiveNode(opts: WindowNodeOptions = {}) {
   const d: WindowDefaults = { ...WINDOW_DEFAULTS, ...(opts.defaults ?? {}) };
   const floorPitch = opts.metresPerStorey ?? d.floorPitch;
   const nightU = uniform(0);
+  const timeU = uniform(0); // seconds, for the slow occasional on/off
 
   const pos = positionGeometry;
   const nrm = normalLocal;
@@ -83,14 +97,36 @@ export function buildWindowEmissiveNode(opts: WindowNodeOptions = {}) {
   );
   const pane = bandV.mul(bandH);
 
-  // Stable per-cell hash -> lit if it lands in the top litFraction of [0,1). The
-  // +512 offset keeps the seed positive for cells west/south of the ENU origin.
+  // Stable per-cell seed. The +512 offset keeps it positive for cells west/south of
+  // the ENU origin; the world coords baked into bayIdx de-correlate it between
+  // buildings. Distinct integer offsets give independent rolls per purpose (the GPU
+  // hash truncates its seed to a uint, so offsets must be whole numbers).
   const seed = floorIdx.mul(1973).add(bayIdx.add(512).mul(9277));
-  const lit = step(1 - d.litFraction, hash(seed));
 
-  const warm = vec3(d.warmPale[0], d.warmPale[1], d.warmPale[2]);
-  const emissiveNode = warm
+  // Lit/unlit. Most windows hold their state all night (the static roll); a small
+  // dynamicFraction slowly re-roll on a staggered, low-rate tick so the odd window
+  // switches on or off now and then, never a flicker.
+  const rBase = hash(seed);
+  const dynamic = step(1 - d.dynamicFraction, hash(seed.add(31)));
+  const phase = hash(seed.add(91));
+  const tick = timeU.mul(d.toggleRate).add(phase).floor();
+  const rTime = hash(seed.add(tick.mul(977)));
+  const lit = step(1 - d.litFraction, mix(rBase, rTime, dynamic));
+
+  // Per-window colour: mostly a warm amber-to-white spread, a rare cool accent, with
+  // a small per-window brightness jitter so the lit panes are not uniform.
+  const warm = mix(
+    vec3(d.warmHot[0], d.warmHot[1], d.warmHot[2]),
+    vec3(d.warmPale[0], d.warmPale[1], d.warmPale[2]),
+    hash(seed.add(57))
+  );
+  const cool = step(1 - d.coolFraction, hash(seed.add(131)));
+  const tint = mix(warm, vec3(d.coolTint[0], d.coolTint[1], d.coolTint[2]), cool);
+  const jitter = hash(seed.add(211)).mul(d.brightJitter * 2).add(1 - d.brightJitter);
+
+  const emissiveNode = tint
     .mul(d.emissivePeak)
+    .mul(jitter)
     .mul(wall)
     .mul(pane)
     .mul(lit)
@@ -98,8 +134,9 @@ export function buildWindowEmissiveNode(opts: WindowNodeOptions = {}) {
 
   return {
     emissiveNode,
-    setNight: (dayFactor: number) => {
+    update: (dayFactor: number, timeSeconds: number) => {
       nightU.value = windowNightGain(dayFactor, d);
+      timeU.value = timeSeconds;
     },
   };
 }

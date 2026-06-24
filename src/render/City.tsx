@@ -19,7 +19,7 @@ import type { BuildingForScene } from "../mutation/building";
 // geometries in a single draw, with per-object identity preserved for later
 // selection and mutation.
 export function City({ buildings }: { buildings: BuildingForScene[] }) {
-  const { mesh, clusterInstances, setNight } = useMemo(() => {
+  const { mesh, clusterInstances, updateWindows } = useMemo(() => {
     const { geometries, ids } = buildBuildingGeometries(buildings);
 
     let vertexCount = 0;
@@ -79,7 +79,7 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
       else clusterInstances.set(cid, [instId]);
     });
 
-    return { mesh: batched, clusterInstances, setNight: windows.setNight };
+    return { mesh: batched, clusterInstances, updateWindows: windows.update };
   }, [buildings]);
 
   // Apply per-cluster height edits as per-instance Y-scale matrices (ADR-R11):
@@ -89,10 +89,11 @@ export function City({ buildings }: { buildings: BuildingForScene[] }) {
   const applied = useRef<Set<string>>(new Set());
   const lastVersion = useRef(-1);
   const scaleMatrix = useRef(new THREE.Matrix4());
-  useFrame(() => {
-    // Ramp the window lights with the live daylight factor every frame, before the
-    // edit early-out below (which only runs when something is actually being edited).
-    setNight(daylightLive.dayFactor);
+  useFrame((state) => {
+    // Ramp the window lights with the live daylight factor and feed the clock for the
+    // slow occasional on/off, every frame, before the edit early-out below (which only
+    // runs when something is actually being edited).
+    updateWindows(daylightLive.dayFactor, state.clock.elapsedTime);
 
     const v = editRatios.version();
     const dragging = editRatios.draggingCluster();

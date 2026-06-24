@@ -95,4 +95,11 @@ describe("WINDOW_DEFAULTS", () => {
     expect(WINDOW_DEFAULTS.litFraction).toBeLessThan(0.5); // mostly dark
     expect(WINDOW_DEFAULTS.emissivePeak).toBeGreaterThan(1); // blooms
   });
+
+  it("keeps the dynamics occasional and accents rare", () => {
+    expect(WINDOW_DEFAULTS.dynamicFraction).toBeLessThan(0.2); // few windows switch
+    expect(WINDOW_DEFAULTS.toggleRate).toBeLessThan(0.2); // slow, not a flicker
+    expect(WINDOW_DEFAULTS.coolFraction).toBeLessThan(0.2); // cool accent is rare
+    expect(WINDOW_DEFAULTS.brightJitter).toBeLessThan(1); // jitter stays positive
+  });
 });
