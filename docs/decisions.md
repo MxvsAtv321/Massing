@@ -376,6 +376,86 @@ cheap undo).
 
 ---
 
+## ADR-R12: Agents are GPU-resident SoA on a CSR graph, advected by a TSL compute kernel
+
+Status: Accepted
+Date: 2026-06-24
+
+Context: the living traffic must scale to thousands of agents at 60 fps without choking the main
+thread (ADR-R05, ADR-R06, ADR-R08). Agents are copies of one mesh, so InstancedMesh is correct (the
+opposite of the city's BatchedMesh, ADR-R09). The question was where the per-agent state lives and
+who advances it: CPU stepping with per-frame matrix writes, or GPU compute over storage buffers.
+
+Decision: agent state is structure-of-arrays in GPU storage buffers (packed (edgeIndex, distance)
+plus a PRNG seed), advanced by one TSL compute kernel per frame and drawn as one InstancedMesh whose
+vertex stage derives world position and heading from the buffers; the fragment stage derives the
+head/tail colour. The road graph is flattened to CSR adjacency (edge endpoints, length, speed, free
+speed, to-node packed to vec4s; offsets and edge lists as uint buffers) so the kernel does bounded
+intersection hand-offs by PRNG without walking polylines. A CPU reference path (stepAgents on the
+same graph) is kept as both the WebGL2 fallback and the correctness oracle, visibly lesser by count,
+not by look (the car geometry and colour are shared in carLook). The kernel is wrapped so any build
+failure returns null and the caller falls back to the CPU path (ADR-R01).
+
+WebGPU caps storage buffers at 8 per shader stage. The layout is packed to stay under: the compute
+reads or writes only the agent state plus the graph it needs to advect (edgeData, CSR), and the
+render derives position, heading, and colour from state plus geometry. Compute uses five buffers, the
+vertex stage three, the fragment stage two. The original 14-buffer layout silently failed pipeline
+creation (the kernel never ran, agents sat frozen at spawn), which is what forced the packing.
+
+Consequences: 60 fps headroom with tens of thousands of agents, no per-frame CPU matrix churn, one
+draw call. The count is tuned for the look, not the limit (restrained ambient life, see the spectacle
+note), and the kernel scales far past it. The straight-edge GPU approximation loses polyline fidelity
+that the CPU path keeps; acceptable at city scale. The per-stage buffer budget is now a hard design
+constraint for any future per-agent data.
+
+Alternatives rejected: CPU stepping at the target count (main-thread cost, matrix upload every
+frame). One merged geometry (loses per-agent instancing). A texture-based GPGPU ping-pong (heavier
+and less direct than TSL storage buffers on the WebGPU path).
+
+---
+
+## ADR-R13: Traffic reacts to edits via a cheap client re-solve; buildings generate demand
+
+Status: Accepted
+Date: 2026-06-24
+
+Context: the product is a living, manipulable city. Editing a building should visibly move the
+traffic, closing the loop from direct manipulation (ADR-R11) to simulation. But the kept flow stack
+deliberately had no code path from buildings to demand: demand was cordon through-traffic only, set
+as a scenario, never derived (ADR-006, ADR-008), a honesty-era invariant. ADR-R07 removed that
+apparatus and put flow explicitly in the simulated world, to be invented freely. The flow was also
+solved once at build time on the server, too static to react and too heavy (a nominal pass plus an
+eight-sample uncertainty ensemble) to re-run live.
+
+Decision: building height generates trips. A height edit injects origin-destination demand between
+the building's nearest road node and the cordon gateways, proportional to the added storeys
+(TRIPS_PER_STOREY); the flow re-solves with that folded into the cordon baseline; the roads re-tint
+and the agents slow on the freshly-congested edges. The re-solve runs in the browser on edit commit
+(mouseup, debounced through the edit overlay, not per drag frame) using a lightweight single-run
+solve (solveFlowLite: one nominal assignment, no ensemble), so there is no network round-trip and
+latency stays low (latency is the enemy). The inputs are precomputed server-side and shipped slim:
+routable edges without geometry, the base OD, gateway nodes, and the street-to-edge and
+cluster-to-node maps. Propagation reuses existing handles: the road congestion vertex attribute is
+rewritten in place, and the agents' per-edge speed column (read-only in the kernel) is updated and
+re-uploaded. This supersedes the no-buildings-to-demand stance of ADR-006 and ADR-008 for the
+simulated layer; it does not dress the result as measured (the one line, ADR-R07), it is honestly
+simulated flow.
+
+Consequences: the edit loop is complete and local. Raising a building loads its access roads and the
+corridors that reach the boundary; the effect strength is one dial (TRIPS_PER_STOREY). Lowering a
+building below its real height does not relieve traffic below the cordon baseline, since the baseline
+carries no per-building load (raising is the interaction that drives the loop); a symmetric model
+would require baselining every building's trips, which is heavier and not needed yet. The live solve
+is nominal-only, so the uncertainty band is not shown during reactivity; the band remains available
+for a static read.
+
+Alternatives rejected: a server API re-solve per edit (network latency on every interaction). A local
+congestion bump on adjacent edges only (cheap but not a network equilibrium, no downstream or route
+effects). Keeping demand fixed and decoupled (leaves building edits with no traffic consequence, so
+no living loop).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
@@ -494,7 +574,8 @@ Disposition: superseded. The structural prohibition on deriving demand from the 
 day is legitimate simulated content as long as it reads as simulated. The cordon and
 `data/cordon.json` are retained as a useful way to inject through-traffic at the boundary, but
 demand is no longer constrained to user-set OD, and the desire-line-versus-flow honesty
-distinction is dropped.
+distinction is dropped. Realized in ADR-R13: building height now generates trips on top of the
+cordon baseline, and the flow re-solves live on edit.
 
 ## ADR-009: Flow by incremental BPR assignment with a capacity-uncertainty band
 

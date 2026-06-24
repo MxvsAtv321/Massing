@@ -1,6 +1,8 @@
-// Demand model for the traffic wind tunnel. Pure, no I/O, no dependency on the massing
-// or edit layers: there is no code path from buildings to demand. Demand is always a
-// user-set scenario, an assumption, never a prediction (ADR-006, ADR-008).
+// Cordon demand model for the traffic wind tunnel: user-set OD through-traffic between
+// boundary gateways. Pure, no I/O. This module stays building-agnostic; the reactive
+// coupling that lets a building's height generate trips is layered on top in
+// reactiveDemand.ts (ADR-R13, which lifts the old no-buildings-to-demand stance of
+// ADR-006/008 for the clearly-simulated flow layer).
 
 export type CordonSide = "N" | "E" | "S" | "W";
 
