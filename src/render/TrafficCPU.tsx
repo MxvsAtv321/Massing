@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import * as THREE from "three/webgpu";
 import { useFrame } from "@react-three/fiber";
 import {
@@ -11,6 +11,7 @@ import {
 import { spawnAgents, stepAgents } from "../sim/agents";
 import { carGeometry, headTailColor, carLightGain } from "./carLook";
 import { daylightLive } from "./daylightStore";
+import type { FlowEngine } from "./flowEngine";
 
 // CPU reference advection: a modest population stepped on the main thread, drawn as
 // one InstancedMesh of head/tail-lit cars (the shared look from carLook). The WebGL2
@@ -22,9 +23,31 @@ const SEED = 90210;
 const MAX_DT = 1 / 30;
 const Y_CAR = 0.9;
 
-export function TrafficCPU({ network }: { network: AgentGraphData }) {
+export function TrafficCPU({
+  network,
+  flow,
+}: {
+  network: AgentGraphData;
+  flow?: FlowEngine;
+}) {
   const graph = useMemo(() => buildAgentGraph(network), [network]);
   const agents = useMemo(() => spawnAgents(graph, AGENT_COUNT, SEED), [graph]);
+
+  // After a re-solve, fold the new congested speeds into the graph edges (kph -> m/s)
+  // so agents slow on freshly-congested roads (5e). Edge order is 1:1 with the solve.
+  useEffect(() => {
+    if (!flow) return;
+    const apply = () => {
+      const speeds = flow.edgeSpeeds();
+      if (!speeds) return;
+      const m = Math.min(speeds.length, graph.edges.length);
+      for (let i = 0; i < m; i++) {
+        if (speeds[i] > 0) graph.edges[i].speedMps = speeds[i] / 3.6;
+      }
+    };
+    apply();
+    return flow.subscribe(apply);
+  }, [flow, graph]);
 
   // The head/tail split is read from the car's local Z in the shader, so colour
   // needs no per-instance buffer; only the light gain varies, set each frame.

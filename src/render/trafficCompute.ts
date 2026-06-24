@@ -20,6 +20,10 @@ import { carGeometry, headTailColor } from "./carLook";
 export type TrafficSystem = {
   mesh: THREE.InstancedMesh;
   update: (dt: number, lightGain: number) => void;
+  // Rewrite per-edge congested speed (kph, agent-edge order) after a flow re-solve
+  // so agents slow on freshly-congested roads (5e). edgeData.y is read-only in the
+  // kernel, so the CPU may update it; the column maps 1:1 to the agent edge index.
+  setEdgeSpeeds: (speedsKph: number[]) => void;
 };
 
 const Y_CAR = 0.9;
@@ -147,12 +151,23 @@ export function createTrafficCompute(
     for (let i = 0; i < count; i++) mesh.setMatrixAt(i, identity);
     mesh.instanceMatrix.needsUpdate = true;
 
+    const edgeDataAttr = (edgeData as unknown as { value: { needsUpdate: boolean } })
+      .value;
+
     return {
       mesh,
       update: (dt: number, lightGain: number) => {
         dtU.value = Math.min(dt, MAX_DT);
         look.setGain(lightGain);
         renderer.compute(advect);
+      },
+      setEdgeSpeeds: (speedsKph: number[]) => {
+        const m = Math.min(speedsKph.length, E);
+        for (let i = 0; i < m; i++) {
+          const s = speedsKph[i];
+          if (s > 0) data[4 * i + 1] = s / 3.6; // kph -> m/s, the speed column
+        }
+        edgeDataAttr.needsUpdate = true; // re-upload the storage buffer
       },
     };
   } catch (e) {
