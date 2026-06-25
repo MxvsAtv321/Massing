@@ -1,0 +1,23 @@
+{
+  "attribution": "Authored analysis regions for the sun-access study, not measured City of Toronto open-space data. Coordinates are local ENU metres [east, north] about the neighborhood centroid. Placement is seeded here and tuned on device; the region is user-placeable (ADR-R16).",
+  "regions": [
+    {
+      "id": "st-james-park",
+      "name": "St. James Park (study region)",
+      "kind": "rect",
+      "center": [0, 0],
+      "halfExtents": [70, 45],
+      "rotationRad": 0,
+      "source": "authored"
+    },
+    {
+      "id": "king-street-frontage",
+      "name": "King Street frontage (study region)",
+      "kind": "rect",
+      "center": [0, -120],
+      "halfExtents": [180, 12],
+      "rotationRad": 0,
+      "source": "authored"
+    }
+  ]
+}
