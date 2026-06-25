@@ -1,13 +1,17 @@
-import type { RoadNetwork } from "./types";
-
 export type ConnectivityResult = {
   components: number; // number of strongly connected components
   largestComponentNodes: number;
   strandedNodeIds: string[]; // nodes not in the largest SCC
 };
 
-// Just the graph fields connectivity needs, so it can run on a network before pruning.
-type GraphView = Pick<RoadNetwork, "nodes" | "edges" | "adjacency">;
+// Just the graph fields connectivity needs (node ids, edge targets, and the out-edge adjacency), so
+// it runs on any graph in this shape: the road network before pruning (RoadNetwork satisfies it),
+// and the generated district graph the stitching gate checks (src/generate/stitch.ts, ADR-R23).
+type GraphView = {
+  nodes: { id: string }[];
+  edges: { to: string }[];
+  adjacency: Map<string, number[]>;
+};
 
 // Iterative Tarjan strongly-connected-components over the directed graph. Iterative to
 // avoid call-stack overflow on larger graphs. A routable network should be one dominant
