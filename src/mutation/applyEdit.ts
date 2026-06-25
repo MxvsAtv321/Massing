@@ -1,6 +1,7 @@
 import type { BuildingForScene } from "./building";
 import type { AddBuildingOp, EditOp } from "./editOp";
 import { storeyToMetres } from "./editOp";
+import type { GeneratedDistrict } from "../generate/types";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,10 @@ export type EditOverlay = {
   removedClusterIds: Set<string>;
   modifiedClusterHeights: Map<string, number>; // clusterId -> new repHeight (metres)
   addedBuildings: HypotheticalBuilding[];
+  // Generated districts the agent authored (ADR-R19, G0). A separate channel from the
+  // single-building edits above; reduced by src/generate/overlay.ts. The generative direction
+  // shares this overlay so the baseline stays immutable and undo/reset are uniform.
+  generatedDistricts: GeneratedDistrict[];
 };
 
 // ─── Overlay helpers ──────────────────────────────────────────────────────────
@@ -22,6 +27,7 @@ export function emptyOverlay(): EditOverlay {
     removedClusterIds: new Set(),
     modifiedClusterHeights: new Map(),
     addedBuildings: [],
+    generatedDistricts: [],
   };
 }
 
