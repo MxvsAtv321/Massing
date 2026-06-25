@@ -508,6 +508,50 @@ the edit scale).
 
 ---
 
+## ADR-R15: BatchedMesh draws per sub-instance on the WebGPU backend; copies use InstancedMesh
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: the performance gate (ADR-R08) measured the WebGPU reference at 54 fps at night against the
+60 fps target, while the WebGL2 fallback held its floor. An on-screen draw-call readout showed 1885
+draws on WebGPU versus 20 on WebGL2 for the same scene. Reading three r184's WebGPUBackend draw path
+explained the gap: a BatchedMesh on the WebGPU backend is drawn with a CPU-side loop, one drawIndexed
+per visible sub-geometry, each call bumping info.render.drawCalls (WebGPUBackend.js _draw, the
+isBatchedMesh branch). The WebGL2 backend instead takes the WEBGL_multi_draw path, submitting all
+sub-draws in one GL call. So ADR-R09's premise that one BatchedMesh is a handful of draws holds on
+WebGL2 but not on the WebGPU reference backend in r184: there a BatchedMesh costs one real encoder
+call per visible instance.
+
+Decision: keep BatchedMesh for the real city, whose geometries are unique so instancing does not
+apply (ADR-R09), but stop using BatchedMesh for copies. The context ring was a BatchedMesh of one
+shared box instanced about 550 times, which on WebGPU was about 550 separate draws for pure backdrop.
+It is now one InstancedMesh, which the WebGPU backend draws as a single instanced draw; per-instance
+transform and colour carry over unchanged (instanceMatrix and instanceColor through the node
+material, bounding sphere recomputed from the instances so the ring still frustum-culls as a unit).
+
+Measured: the conversion dropped the night draw count from 1885 to 1339 and lifted the WebGPU
+reference from 54 to 59 fps (17.0 ms); the daytime wide shot, which also pays the cascaded-shadow
+re-renders of the city, sits at 64 fps (15.7 ms). The WebGL2 fallback is unaffected, it already
+collapsed the batch.
+
+Consequences and the remaining lever: the real city is still about 1315 unique footprints, so it is
+about 1315 encoder calls on WebGPU for the beauty pass and again per shadow cascade. That is the
+dominant remaining draw cost and the next lever, most relevant to the daytime shadow work (Unit 8)
+where the cascade re-renders multiply it. The intended fix is to merge the unedited buildings into
+one static geometry (one draw, one per cascade) and promote a cluster to its own mesh only while it
+carries a height edit, preserving ADR-R10 raycast selection and ADR-R11 per-cluster Y-scale. A three
+version bump that adds WebGPU multi-draw-indirect for BatchedMesh would fix it without the rework and
+is worth checking against the TSL and post stack first. The night frame is partly GPU-bound (window
+emissive plus bloom over a bright skyline), so the city draw cut helps day more than night, but night
+still gained from the context cut, so it is draw-sensitive too.
+
+Alternatives rejected: keeping the context ring as a BatchedMesh (hundreds of needless draws on the
+reference backend). Merging the whole city into one static geometry unconditionally (loses the
+per-cluster height edit of ADR-R11 and the per-building selection of ADR-R10).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
