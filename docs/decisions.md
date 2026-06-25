@@ -839,6 +839,51 @@ grounded). A new isochrone algorithm (the existing one-to-all Dijkstra already c
 an isochrone thresholds). Reachability only over the real graph (misses the district's own internal
 walkability, which is the point of a car-free grid).
 
+## ADR-R23: Cross-environment determinism and street-graph stitching are first-class gates
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: ADR-R08 made performance a release gate because it is the engine's one load-bearing falsifiable
+claim. The generative engine adds two more claims that are just as load-bearing and, unlike performance,
+fail silently rather than visibly. Both were flagged as risks in architecture section 20; this ADR
+elevates them from prose risks to gates, the same move ADR-R08 made for frame time, so they are checked,
+not hoped for. They fail quietly, which is exactly why they need a hard line.
+
+Decision: define two gates, each with a check and a unit where it binds, and make passing them a release
+condition the same way frame time is.
+
+- The determinism gate. The procedural expander (ADR-R18) must produce bit-identical geometry from the
+  same ops and seed in node and in the browser. The agent scores geometry server-side and the client
+  renders from the same streamed ops (ADR-R21); if a PRNG or a float diverges between the two
+  environments, the measured consequence the user sees silently does not match the city on screen, which
+  breaks the moat without any visible symptom. The check is a cross-environment reproducibility test
+  (expand a fixture op set in node and in a browser/worker context and assert the geometry hashes are
+  equal), not only a node test. This constrains the PRNG choice and the arithmetic to be environment
+  stable. It binds at G1 (the expander) and is re-asserted at G5 (the server-scores, client-renders
+  loop).
+
+- The stitching gate. The generated street grid must join the real road graph as one connected
+  component, verified, before any reachability or traffic score is trusted. Walk reachability and flow
+  both run over the stitched graph (ADR-R22, ADR-R13); a grid that looks connected but leaves the
+  district a separate component yields a confidently wrong isochrone and a wrong flow, again with no
+  visible symptom. The check reuses the existing connectivity analysis (src/network/connectivity.ts): the
+  stitched graph must be a single strongly connected component reaching the district's lots from the real
+  network. It binds at G1 (the stitch) and gates the scoring tools at G4.
+
+Consequences: these two gates plus the ADR-R08 performance gate are the three release conditions for the
+generative units. They are cheap to check and catch the two failures most likely to be hand-waved in
+planning and silent in the build. The determinism gate constrains how the expander does arithmetic and
+randomness from the first line of G1, rather than being retrofitted after a divergence is noticed in a
+demo. The stitching gate makes the graph surgery a tested invariant, not an assumption the scorers
+inherit.
+
+Alternatives rejected: leaving both as section 20 risks (they fail silently, so a risk note does not
+catch them; ADR-R08's precedent is that load-bearing falsifiable claims become gates). A node-only
+determinism test (the divergence that matters is node versus browser, which a node-only test cannot see).
+Trusting the stitch by construction without a connectivity check (the exact class of bug, a near-miss
+snap that leaves a disconnected component, that construction confidence misses).
+
 ---
 
 # Original decisions (001 to 010) and their disposition under the rebuild

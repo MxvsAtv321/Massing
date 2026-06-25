@@ -905,7 +905,11 @@ graph, block partition, lot subdivision, templated massing, section 13). THREE-f
 deterministic (same seed to the bit). Gated headless, the way the study math was: unit tests on
 the invariants (lots inside blocks, no footprint overlaps, heights inside the envelope, the grid
 connected to the real graph), plus a `verify:generate` script that dumps a district to GeoJSON for
-eyeball inspection. No renderer. This is the hands, proven before anything renders them.
+eyeball inspection. No renderer. This is the hands, proven before anything renders them. Two gates
+bind here (ADR-R23): the determinism gate (the expander produces bit-identical geometry from the same
+ops and seed in node and in a browser context, a cross-environment test, not node-only) and the
+stitching gate (the generated grid joins the real graph as one connected component, checked with the
+existing connectivity analysis). They constrain the PRNG and the arithmetic from the first line.
 
 ### Unit G2: the first milestone, one directive end to end, live
 
@@ -932,7 +936,9 @@ Expose the simulators as clean scoring tools (`src/score/`): sun-hours on a regi
 and population count (new pure function), reachability isochrone (new `src/reach/`, section 15.1),
 and traffic load (flow). Each returns a structured score for a generated district, run both
 server-side and client-side. The reachability module and the generated walk graph land here. This
-is the substrate the agent reads; no agent yet.
+is the substrate the agent reads; no agent yet. The stitching gate (ADR-R23) is a release condition
+for this unit: reachability and flow are only trusted once the stitched graph passes the
+single-connected-component check, since a disconnected district yields a confidently wrong score.
 
 ### Unit G5: the agent loop, server-side, one goal
 
@@ -996,7 +1002,8 @@ The four the brief named, plus where the difficulty is most underestimated.
   design expressed in code. Mitigation: one well-tested template proven by the G1 GeoJSON dump and
   on-device eyes before variety, and variety treated explicitly as a later upgrade.
 
-Where the difficulty is most underestimated, called out because they are easy to wave past:
+Where the difficulty is most underestimated, called out because they are easy to wave past, and both
+are now first-class build gates (ADR-R23), not just risks, because they fail silently:
 
 - Street-network stitching. Connecting the generated grid to the real Toronto road graph so
   reachability and traffic actually flow through the district is fiddly graph surgery (snapping
