@@ -1,5 +1,6 @@
 import type { GenerativeOp } from "./op";
 import type { RegionRef, RefContext } from "./reference";
+import type { RealBoundaryNode } from "./stitch";
 
 // The materialized state of one generated district in the overlay (ADR-R19). Created by a
 // DefineDistrict op; shaping ops append to `ops` in order. G1 fills the expanded geometry; G0
@@ -38,7 +39,10 @@ export type GeneratedDistrict = {
 };
 
 // Everything a generative op resolves against. Extends the reference fixtures with the real cluster
-// centroids the canvas clearing tests (ADR-R19). G1 fills it from the build payload.
+// centroids the canvas clearing tests (ADR-R19) and the real road-network boundary nodes the
+// generated grid stitches to (ADR-R22, R23). G1 fills it from the build payload; both extras are
+// optional so a context built only for the overlay channel stays valid.
 export type GenerativeContext = RefContext & {
   clusterCentroids: Record<string, [number, number]>; // cluster id -> ENU [east, north]
+  realBoundaryNodes?: RealBoundaryNode[]; // real nodes the generated grid connects to
 };

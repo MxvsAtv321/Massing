@@ -19,8 +19,10 @@ export type Grid = {
   cellSize: number; // metres
 };
 
-// Map an axis-frame point (uu along axis, vv across) to ENU using the once-computed cos/sin.
-function axisToEnu(grid: Grid, uu: number, vv: number): [number, number] {
+// Map an axis-frame point (uu along axis, vv across) to ENU using the once-computed cos/sin. Exported
+// so lots and massing reuse this exact mapping rather than calling trig per vertex (the determinism
+// principle, ADR-R23): all callers share the one cos/sin pair stored on the grid.
+export function axisToEnu(grid: Grid, uu: number, vv: number): [number, number] {
   return [
     grid.center[0] + uu * grid.cos - vv * grid.sin,
     grid.center[1] + uu * grid.sin + vv * grid.cos,
