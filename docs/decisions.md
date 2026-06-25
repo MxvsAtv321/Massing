@@ -546,6 +546,16 @@ is worth checking against the TSL and post stack first. The night frame is partl
 emissive plus bloom over a bright skyline), so the city draw cut helps day more than night, but night
 still gained from the context cut, so it is draw-sensitive too.
 
+Two cheaper levers were tried and ruled out. The version bump is dead: r185's WebGPUBackend draws a
+BatchedMesh with the same per-sub-draw loop as r184, byte for byte. The WebGPU render bundle
+(BundleGroup) is also dead for this object: wrapping the city batch to record its draws once and
+replay them froze the animated window-light uniforms (the per-frame refresh did not run on replay as
+the source suggested) and disrupted the picking and pan event path, so it was reverted. The
+merge-static rework remains the only viable lever, and it is deferred: the gate is met at 59 fps night
+and 64 fps day, the rework is large, blind without on-device verification, and touches the core
+select and edit interaction, so it waits until the daytime shadow work (Unit 8) measures whether the
+shadow-pass cost actually needs it.
+
 Alternatives rejected: keeping the context ring as a BatchedMesh (hundreds of needless draws on the
 reference backend). Merging the whole city into one static geometry unconditionally (loses the
 per-cluster height edit of ADR-R11 and the per-building selection of ADR-R10).
