@@ -878,6 +878,22 @@ randomness from the first line of G1, rather than being retrofitted after a dive
 demo. The stitching gate makes the graph surgery a tested invariant, not an assumption the scorers
 inherit.
 
+Implementation status (G1b, 2026-06-25), recorded honestly rather than assumed: the determinism gate
+currently proves V8 run-to-run determinism (the expander gives identical geometry across repeated runs
+and is independent of map and set iteration order) plus a structural defense, the real divergence risk
+is not the PRNG but transcendental functions in the geometry math, since Math.sin, Math.cos, and
+Math.pow are at the mercy of the platform libm and are not bit-identical between V8 and JavaScriptCore,
+so the expander is built to keep transcendentals out of the hot path entirely (the grid computes its
+axis cos and sin once and reuses them, the gradient smoothstep is the pure polynomial 3t^2 - 2t^3, and
+distance uses only Math.sqrt, which is IEEE 754 correctly-rounded and so bit-identical), making the gate
+pass by construction. What is NOT yet verified: the true production split is node (V8) on the server
+versus the user's browser engine, which on Safari is JavaScriptCore with a different libm, and that
+node-versus-JavaScriptCore check is not reachable in the headless build, so it is unverified. A
+node-versus-worker test would only re-prove V8-to-V8. The honest line, the same way Bill 17 is on the
+record rather than assumed: the gate proves V8-to-V8 and by-construction transcendental avoidance today,
+and JavaScriptCore parity is unverified until a real-browser determinism slice (a Playwright or WebKit
+pass) is added, which is the right home for it at G5 where the server scores and the client renders.
+
 Alternatives rejected: leaving both as section 20 risks (they fail silently, so a risk note does not
 catch them; ADR-R08's precedent is that load-bearing falsifiable claims become gates). A node-only
 determinism test (the divergence that matters is node versus browser, which a node-only test cannot see).
