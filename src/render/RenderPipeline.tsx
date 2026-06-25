@@ -54,12 +54,40 @@ export function RenderPipeline() {
     // owns a WebGPU context.
     void stats.init(gl);
     document.body.appendChild(stats.dom);
+    // Pin top-right above the canvas and clear of the browser chrome, scaled up so
+    // the FPS/GPU-ms numbers are legible for the performance gate (ADR-R08).
+    stats.dom.style.position = "fixed";
     stats.dom.style.left = "auto";
-    stats.dom.style.right = "0px";
+    stats.dom.style.right = "8px";
+    stats.dom.style.top = "8px";
+    stats.dom.style.zIndex = "10000";
+    stats.dom.style.transformOrigin = "top right";
+    stats.dom.style.transform = "scale(2)";
     return () => {
       stats.dom.remove();
     };
   }, [gl, stats]);
+
+  // Always-visible FPS/draw-call readout for the performance gate (ADR-R08).
+  // Self-rolled so it does not depend on stats-gl's panel, which sits hidden behind
+  // the browser chrome here. Top-left, clear of the bottom-left backend badge.
+  const hudRef = useRef<HTMLDivElement | null>(null);
+  const perf = useRef({ frames: 0, last: 0 });
+  useEffect(() => {
+    const el = document.createElement("div");
+    el.style.cssText =
+      "position:fixed;top:8px;left:8px;z-index:10000;padding:6px 10px;" +
+      "font:600 13px/1.4 ui-monospace,Menlo,monospace;color:#cdf;" +
+      "background:rgba(0,0,0,0.55);border:1px solid rgba(255,255,255,0.15);" +
+      "border-radius:6px;pointer-events:none;white-space:pre";
+    el.textContent = "fps --";
+    document.body.appendChild(el);
+    hudRef.current = el;
+    return () => {
+      el.remove();
+      hudRef.current = null;
+    };
+  }, []);
 
   // Priority > 0 disables R3F's automatic render so we own the frame. The guard
   // prevents overlapping async renders.
@@ -72,6 +100,24 @@ export function RenderPipeline() {
       stats.end();
       stats.update();
       rendering.current = false;
+      const p = perf.current;
+      const now = performance.now();
+      if (p.last === 0) p.last = now;
+      p.frames++;
+      const dt = now - p.last;
+      if (dt >= 250 && hudRef.current) {
+        const fps = (p.frames * 1000) / dt;
+        const ms = dt / p.frames;
+        const info = (gl as unknown as {
+          info?: { render?: { drawCalls?: number } };
+        }).info;
+        const draws = info?.render?.drawCalls ?? 0;
+        hudRef.current.textContent = `fps ${fps.toFixed(0)}   ${ms.toFixed(
+          1
+        )} ms   draws ${draws}`;
+        p.frames = 0;
+        p.last = now;
+      }
     };
     if (post) {
       post.renderAsync().then(finish, finish);

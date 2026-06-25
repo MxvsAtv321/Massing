@@ -456,6 +456,58 @@ no living loop).
 
 ---
 
+## ADR-R14: Nightfall window lights are a procedural emissive node on the city material
+
+Status: Accepted
+Date: 2026-06-24
+
+Context: the city needed to come alive at night. The most cinematic next step (Unit 6) was lighting
+the massing itself, a scatter of warm windows that ramps on at dusk and reads as a real skyline. The
+constraint was the spine: it had to stay one BatchedMesh (ADR-R09), hold the performance budget on
+both paths (ADR-R08), survive a live height edit (ADR-R11), and never invent geometry it could not
+justify. A naive approach, per-window emissive quads or point lights, would multiply draw calls and
+light counts and defeat the one-BatchedMesh decision outright.
+
+Decision: windows are a procedural emissive contribution authored in TSL and attached to the city
+material's emissiveNode, evaluated entirely in the fragment stage. A floor/bay grid is laid from
+positionWorld; walls are separated from roofs and caps by the surface normal; each cell is lit or
+unlit by a stable per-cell hash so the scatter is mostly dark (litFraction 0.28) and de-correlates
+building to building for free off world coordinates. Lit panes carry a warm amber-to-white spread
+with a rare cool accent and a small per-window brightness jitter, sit above 1.0 in HDR so the
+existing bloom catches them, and ramp on across dusk via the shared daylightLive factor
+(windowNightGain). A small dynamicFraction slowly re-rolls on a low-rate staggered tick so the odd
+window switches on or off over the night, never a flicker. There is no new geometry, no draw call,
+and no compute: pure material math, identical on both backends, which is why the WebGL2 fallback
+renders the lights the same as WebGPU rather than dropping them like a compute-dependent pass.
+
+The edit-reactivity fell out of a BatchNode detail rather than a new seam. BatchNode folds the
+per-instance batching matrix (which carries the ADR-R11 height-edit Y-scale) into positionLocal and
+thus positionWorld, while positionGeometry stays raw. Keying the floor rows off positionWorld.y means
+a raised building's world height grows and it gains more rows of windows as it rises, instead of
+stretching the existing ones; at rest (ratio 1) it equals the raw geometry height so the look is
+unchanged. This removed the per-instance editRatio attribute the planning pass had proposed as an
+unproven seam: it was never needed. The node math is mirrored by THREE-free pure functions
+(windowNightGain, windowSeed, isWindowLit, paneMask, wallMask, floorCoord) unit-tested in node.
+
+Consequences and the measured gate (ADR-R08), at night with windows lit, on device: WebGPU 54 fps /
+18.7 ms, WebGL2 fallback 32 fps / 31.4 ms. The fallback clears its 30 fps floor. WebGPU sits about
+10 percent under the 60 fps reference target, and the windows are not the cause: they add zero draw
+calls and only a handful of ALU ops on wall pixels, so the draw count is identical with or without
+them. The cap is the scene-wide draw-call count, 1885 on the WebGPU post path versus 20 on the
+post-less WebGL2 direct render. That gap points at the BatchedMesh not collapsing to a multi-draw on
+the WebGPU backend, or per-pass draw counts accumulating across the node post graph. It is a
+pre-existing concern that touches ADR-R09, not a window-lights regression, and is flagged for a
+dedicated draw-call investigation as the next perf pass. The visual gate passed on both backends.
+
+Alternatives rejected: a baked emissive lightmap or texture atlas (loses live edit-reactivity, costs
+memory, and would not gain floors on a raise). Per-window instanced quads or extruded emissive
+geometry (draw-call and geometry cost, defeats the one-BatchedMesh spine). A per-window or per-cell
+point light (absurd light count, no chance at budget). A per-instance editRatio storage attribute to
+drive floor count (the unproven seam, made unnecessary once positionWorld was found to already carry
+the edit scale).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
