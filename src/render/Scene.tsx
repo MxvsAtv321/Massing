@@ -12,6 +12,7 @@ import { Lighting } from "./Lighting";
 import { SelectionHighlight } from "./SelectionHighlight";
 import { HeightGizmo } from "./HeightGizmo";
 import { StudyRegion } from "./StudyRegion";
+import { StudyController } from "./StudyController";
 import { computeModelBounds } from "./cityGeometry";
 import {
   buildClusterRepHeights,
@@ -151,6 +152,13 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Sun-access study region (8.2): a luminous, placeable analysis rectangle
           over the open space the study measures. Keys 1/2/3 move/resize/rotate. */}
       <StudyRegion />
+      {/* Sun-access study runner (8.3): press "u" to compute the sun-hours field
+          for the region off the main thread. Result logs to the console. */}
+      <StudyController
+        buildings={payload.buildings}
+        bounds={bounds}
+        originLatLon={payload.originLatLon}
+      />
       {/* makeDefault so the height gizmo can suspend orbiting while dragging. */}
       <OrbitControls
         makeDefault

@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { parseRegions } from "../study/region";
-import type { AnalysisRegion } from "../study/studyTypes";
+import type { AnalysisRegion, RegionField } from "../study/studyTypes";
 import studyRegionsJson from "../../data/study-regions.json";
 
 // The active calendar date and analysis region for the scene and the sun-access
@@ -15,9 +15,13 @@ import studyRegionsJson from "../../data/study-regions.json";
 // unchanged until the user picks another day. The study recommends the autumn
 // equinox (DEFAULT_STUDY_DATE in src/study), which is one click away in the control.
 
+export type StudyStatus = "idle" | "running" | "ready";
+
 export type StudyState = {
   date: string; // ISO yyyy-mm-dd, interpreted in America/Toronto
   region: AnalysisRegion; // the open space the study measures, ENU metres
+  status: StudyStatus; // study lifecycle, for the panel and the heatmap
+  field: RegionField | null; // the computed sun-hours field, null until first run
 };
 
 const SCENE_OPEN_DATE = "2026-06-21"; // summer solstice, the established opening look
@@ -31,6 +35,8 @@ const DEFAULT_REGION =
 const state: StudyState = {
   date: SCENE_OPEN_DATE,
   region: { ...DEFAULT_REGION },
+  status: "idle",
+  field: null,
 };
 let snapshot: StudyState = { ...state };
 const listeners = new Set<() => void>();
@@ -55,6 +61,17 @@ export const studyState = {
   },
   setRegion(region: AnalysisRegion): void {
     state.region = region;
+    emit();
+  },
+  getField(): RegionField | null {
+    return state.field;
+  },
+  setField(field: RegionField | null): void {
+    state.field = field;
+    emit();
+  },
+  setStatus(status: StudyStatus): void {
+    state.status = status;
     emit();
   },
   subscribe(cb: () => void): () => void {
