@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three/webgpu";
-import { uv, vec3, float, smoothstep } from "three/tsl";
+import { uv, vec3, float, smoothstep, texture } from "three/tsl";
 import { TransformControls } from "@react-three/drei";
 import { studyState, useStudyState } from "./studyStore";
+import { fieldToHeatmapData } from "../study/studyHeatmap";
 import type { AnalysisRegion } from "../study/studyTypes";
 
 // The analysis region for the sun-access study (Unit 8, increment 8.2): a luminous
@@ -26,10 +27,41 @@ const COLOR: [number, number, number] = [0.35, 0.8, 1.05]; // cool analysis cyan
 type Mode = "translate" | "scale" | "rotate";
 
 export function StudyRegion() {
-  const { region } = useStudyState();
+  const { region, field } = useStudyState();
   const proxy = useMemo(() => new THREE.Object3D(), []);
   const dragging = useRef(false);
   const [mode, setMode] = useState<Mode>("translate");
+
+  // The sun-hours heatmap: bake the field into a DataTexture and sample it on a plane
+  // under the border. Rebuilt only when a study finishes (not per frame), so the
+  // recompile cost is paid once per run. The colours are graded CPU-side.
+  const heat = useMemo(() => {
+    if (!field) return null;
+    const tex = new THREE.DataTexture(
+      new Uint8Array(fieldToHeatmapData(field).buffer),
+      field.width,
+      field.height,
+      THREE.RGBAFormat
+    );
+    tex.needsUpdate = true;
+    const mat = new THREE.MeshBasicNodeMaterial({
+      transparent: true,
+      depthWrite: false,
+      toneMapped: false,
+      side: THREE.DoubleSide,
+    });
+    const t = texture(tex);
+    mat.colorNode = t.rgb;
+    mat.opacityNode = t.a;
+    return { tex, mat };
+  }, [field]);
+
+  useEffect(() => {
+    return () => {
+      heat?.tex.dispose();
+      heat?.mat.dispose();
+    };
+  }, [heat]);
 
   const material = useMemo(() => {
     const m = new THREE.MeshBasicNodeMaterial({
@@ -110,6 +142,17 @@ export function StudyRegion() {
   return (
     <>
       <primitive object={proxy}>
+        {heat && (
+          <mesh
+            rotation-x={-Math.PI / 2}
+            position-y={-0.02}
+            material={heat.mat}
+            renderOrder={997}
+            raycast={() => {}}
+          >
+            <planeGeometry args={[2, 2]} />
+          </mesh>
+        )}
         <mesh
           rotation-x={-Math.PI / 2}
           material={material}

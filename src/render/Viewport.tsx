@@ -8,6 +8,7 @@ import { Scene } from "./Scene";
 import { RenderPipeline } from "./RenderPipeline";
 import { TimeOfDayControl } from "./TimeOfDayControl";
 import { SelectionPanel } from "./SelectionPanel";
+import { StudyPanel } from "./StudyPanel";
 import type { CityPayload } from "./types";
 
 const CLEAR_COLOR = "#0b0d10";
@@ -31,6 +32,7 @@ export default function Viewport({ payload }: { payload: CityPayload }) {
       <BackendBadge backend={backend} />
       <TimeOfDayControl />
       <SelectionPanel />
+      <StudyPanel />
     </div>
   );
 }
