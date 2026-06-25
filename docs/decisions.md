@@ -562,6 +562,75 @@ per-cluster height edit of ADR-R11 and the per-building selection of ADR-R10).
 
 ---
 
+## ADR-R16: The sun-access study is an off-thread CPU heightfield raymarch, presented as exploratory measured geometry
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: the city already casts real shadows from real Toronto heights under the real astronomy-engine
+sun (Lighting.tsx, CSM). Unit 8 turns that into a planner-grade instrument: pick an open space, and
+read how much direct sun an edit takes from it across the Toronto tall-building shadow-study window
+(equinox, 9:18 to 18:18). This is the rare feature where the most cinematic move and the most rigorous
+one are the same: a measured shadow of a measured building under a measured sun. The line is held by
+register (ADR-R07): it presents as a live exploratory study, never a stamped report, no badge, no
+pass/fail verdict.
+
+Decision, the parts that shipped:
+
+Analysis region. data/ has no St. James Park polygon and nothing is fetched (bake-don't-fetch), so the
+region is a user-placed, resizable, rotatable ENU rectangle, seeded from a hand-authored
+data/study-regions.json default over the park. It renders as a luminous analysis overlay, never as a
+measured Toronto feature, which holds the one line. Rejected: auto-deriving open space (illegible,
+picks parking gaps), and requiring the user to paint before anything reads.
+
+Accumulation method, revised from the plan. The Unit 8 plan proposed a GPU sun-rig (render the city
+depth from the sun N times into render targets, accumulate on the GPU). That was revised to a CPU
+heightfield raymarch in a Web Worker, for two reasons. First, the build is driven headless and the GPU
+render-to-texture accumulator cannot be verified without the device, so it would have been many blind
+verify-iterate cycles; the CPU math is pure and unit-tested in node before it ever runs on device.
+Second, and decisive: the worker runs entirely off the frame loop, so the study never touches the
+render budget no matter the sample count or resolution, which dissolves the very perf risk that made
+the rig measurement (8.3) the gate. A max-height grid of the city is built once from the footprints,
+and each region texel raymarches the grid toward each sun sample, adding the sample's trapezoidally
+weighted hours when unoccluded. Measured on device: a study runs in 30 to 100 ms on the worker (more
+in open areas, where rays travel far before clearing), an order of magnitude under budget. The result
+field is graded into a heatmap (cool shadow blue to warm sunlit gold) baked CPU-side into a texture on
+the region plane.
+
+Cadence and the live loop. The study runs on demand (press U) and re-runs on every committed height
+edit (the edit store version is polled, the re-run waits for the drag to end). The baseline is the
+unedited city for the current region and date, cached and recomputed only when the region or date
+changes; an edit recomputes just the current field (with the cluster Y-scale folded into the
+heightfield heights) and diffs it. Net-new shadow is the mean sun-hours the edit removes from the
+region, surfaced with the newly-shadowed area and a single bylaw dial (NET_NEW_THRESHOLD_HOURS),
+shown as a line the delta crosses (amber over, green within), not a verdict. This closes the
+edit-to-consequence loop, the same shape as the traffic re-solve (ADR-R13): raise a tower, its shadow
+falls on the park, the panel ticks up the sunlight removed.
+
+WebGL2. The study is CPU and backend-agnostic, so it runs identically on both paths, better than the
+plan's "degrades on the fallback": the CSM being WebGPU-only does not matter because the study owns its
+own occlusion math and never uses the CSM.
+
+Register. Real heights, real sun, real Toronto zone, real date; stated plainly as that, presented as a
+live exploratory study with the window and date always visible so the number is legible and
+falsifiable. No seal, no compliance claim.
+
+Consequences. The study adds zero frame-budget cost (off-thread), so the ADR-R15 merge-static rework is
+not needed for Unit 8: the worry that the daytime accumulation would blow the budget is resolved by
+construction. A supporting shadow-cost pass was needed first: at low sun a wide view was fill-bound to
+24 fps, so the cascades were trimmed from four to three, the shadow map from 2048 to 1024, and maxFar
+tightened to the city edge (the context ring casts no shadows), which restored the sunset budget, the
+hero moment for a sun study. The heightfield is conservative (footprints solid to max height, holes
+ignored) and stepped at the cell size, exploratory by intent. The net-new metric is a mean over the
+region; a single tower may shade one corner hard yet move the mean modestly, so the dial is low and
+tunable.
+
+Alternatives rejected: the GPU sun-rig (correct and fast at runtime, but blind to build and carrying
+the frame-budget risk the worker removes); sampling the view-fit CSM (wrong frame, couples the study to
+the camera); a baked lightmap (loses edit-reactivity).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
