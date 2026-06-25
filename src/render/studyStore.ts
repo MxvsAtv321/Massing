@@ -1,12 +1,15 @@
 "use client";
 
 import { useSyncExternalStore } from "react";
+import { parseRegions } from "../study/region";
+import type { AnalysisRegion } from "../study/studyTypes";
+import studyRegionsJson from "../../data/study-regions.json";
 
-// The active calendar date for the scene and the sun-access study (Unit 8), shared
-// by the lighting (which drives the real sun off it), the time-of-day label, and
-// the study itself in later increments. Introduced here to close the parked
-// date-picker TODO in Lighting.tsx. Config, region, result, and status join this
-// store as the study is built out.
+// The active calendar date and analysis region for the scene and the sun-access
+// study (Unit 8), shared by the lighting (which drives the real sun off the date),
+// the time-of-day label, the region overlay, and the study itself in later
+// increments. Introduced here to close the parked date-picker TODO in Lighting.tsx.
+// Result and status join this store as the study is built out.
 //
 // Defaults to the summer solstice the scene opened on, so the established look is
 // unchanged until the user picks another day. The study recommends the autumn
@@ -14,11 +17,21 @@ import { useSyncExternalStore } from "react";
 
 export type StudyState = {
   date: string; // ISO yyyy-mm-dd, interpreted in America/Toronto
+  region: AnalysisRegion; // the open space the study measures, ENU metres
 };
 
 const SCENE_OPEN_DATE = "2026-06-21"; // summer solstice, the established opening look
 
-const state: StudyState = { date: SCENE_OPEN_DATE };
+// Seed the region from the authored default over St. James Park. Its exact
+// placement is tuned on device through the region gizmo (8.2).
+const DEFAULT_REGION =
+  parseRegions(studyRegionsJson).find((r) => r.id === "st-james-park") ??
+  parseRegions(studyRegionsJson)[0];
+
+const state: StudyState = {
+  date: SCENE_OPEN_DATE,
+  region: { ...DEFAULT_REGION },
+};
 let snapshot: StudyState = { ...state };
 const listeners = new Set<() => void>();
 
@@ -35,6 +48,13 @@ export const studyState = {
   setDate(date: string): void {
     if (date === state.date) return;
     state.date = date;
+    emit();
+  },
+  getRegion(): AnalysisRegion {
+    return state.region;
+  },
+  setRegion(region: AnalysisRegion): void {
+    state.region = region;
     emit();
   },
   subscribe(cb: () => void): () => void {

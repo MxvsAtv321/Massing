@@ -11,6 +11,7 @@ import { Traffic } from "./Traffic";
 import { Lighting } from "./Lighting";
 import { SelectionHighlight } from "./SelectionHighlight";
 import { HeightGizmo } from "./HeightGizmo";
+import { StudyRegion } from "./StudyRegion";
 import { computeModelBounds } from "./cityGeometry";
 import {
   buildClusterRepHeights,
@@ -147,6 +148,9 @@ export function Scene({ payload }: { payload: CityPayload }) {
         innerRadius={bounds.radius * 1.2}
         outerRadius={bounds.radius * 3.5}
       />
+      {/* Sun-access study region (8.2): a luminous, placeable analysis rectangle
+          over the open space the study measures. Keys 1/2/3 move/resize/rotate. */}
+      <StudyRegion />
       {/* makeDefault so the height gizmo can suspend orbiting while dragging. */}
       <OrbitControls
         makeDefault
