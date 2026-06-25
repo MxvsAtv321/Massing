@@ -631,6 +631,216 @@ the camera); a baked lightmap (loses edit-reactivity).
 
 ---
 
+# Generative engine decisions (R17 onward)
+
+These define the generative extension: describe a district and an agent conjures it in grounded,
+cinematic 3D. They rest on one principle carried from ADR-004 and scaled from one building to a
+district: creative intent lives in the agent, spatial correctness lives in code. Design rationale is
+`docs/architecture.md` Part II (sections 11 to 20).
+
+## ADR-R17: The agent emits district-level intent ops over real regions, never geometry
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: this is the seam the project turns on. The agent must express a brief ("car-free waterfront
+for forty thousand, sunny park, towers stepping to the water") well enough to steer a refinement, but
+must never do spatial layout, which is what LLMs are worst at. Too low-level (per-footprint ops) and the
+agent drowns in coordinates and a district becomes thousands of tool calls. Too high-level (one
+generateDistrict(prompt) op) and the agent cannot act on "denser near the water" without re-rolling
+everything, and the procedural layer becomes an un-steerable black box.
+
+Decision: a small closed op union, the descendant of the EditOp union (ADR-004, ADR-R11), of
+district-level intent over real regions and anchors. Five ops: DefineDistrict (claim a region as the
+canvas, with a seed), LayStreets (pattern, block size, primary axis, car-free), FillBlocks (program,
+density or population target, height envelope, coverage), PlaceOpenSpace (a park reference and area
+target), ApplyGradient (a height or density scalar field anchored to a real feature, the answer to
+"stepping down to the water" and "denser near the water"). Plus a reference grammar: the agent names
+real features (waterEdge, parkCentroid, realStreet, region, boundaryOf) rather than coordinates. Every
+numeric is bounded; every op is Zod-validated; the agent emits no footprint, no centerline, no height in
+metres at a coordinate. The boundary is sharp: the agent owns region, program, targets, envelope,
+gradient, street pattern, what is car-free and where the park goes; the procedural layer (ADR-R18) owns
+every centerline, intersection, block, lot, footprint, and per-building storey.
+
+Consequences: one sentence of the brief maps to one op, and a refinement changes one parameter, so the
+agent can steer. The op union is the strict tool surface the server-side loop constrains the model to
+(ADR-R21), the same shape as today's edit_building tool. The vocabulary is the highest-risk design in
+Part II and is expected to revise once after the agent stress-tests it (ADR-R21, the build flags this).
+
+Alternatives rejected: per-footprint ops scaled up (drowns the agent in coordinates, thousands of calls
+per district). A monolithic generateDistrict(prompt) (un-steerable, cannot refine one aspect, the
+procedural layer becomes an un-decomposable mega-function).
+
+## ADR-R18: Procedural expansion is deterministic, isomorphic, and instanced, grounded on the real plane
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: the ops (ADR-R17) must become grounded geometry that casts the real shadows and carries the
+real flow, identically wherever it runs, and within the draw-call budget (ADR-R08, ADR-R15). The layer
+both scores (server-side, in the agent loop) and renders (client-side), so it must run in both. And a
+district of one to three thousand buildings cannot pay the WebGPU per-building draw cost a BatchedMesh
+incurs (ADR-R15).
+
+Decision: a pure, THREE-free, isomorphic module (src/generate) that expands an op list plus a seed into
+a grounded district: resolve the region and anchors against real data, lay the street grid oriented to
+the primary axis and stitch its perimeter to the real road graph, partition into blocks, subdivide
+blocks into lots with one well-tested template, and mass each lot by extruding an inset footprint to a
+height drawn from the envelope through any gradient field, snapped to whole storeys. A seeded PRNG makes
+it deterministic to the bit, the same in node and the browser (the determinism contract, ADR-R21). The
+generated massing renders as InstancedMesh templates (podium, slab, point tower) with per-instance
+transform, footprint scale, and height, which on the WebGPU backend is one draw per template (ADR-R15
+routes copies to InstancedMesh) and grows by incrementing the instance count with no geometry
+reallocation. Start simple and grounded with the rectilinear grid; architectural variety (unique hero
+extrusions, more templates) is a later upgrade.
+
+Consequences: the same expander scores and renders, so the user sees exactly what the agent measured.
+The instancing is most of the answer to live 60 fps (ADR-R08, the build proves it in G3). The street
+pattern is coupled to the render budget: rectilinear grids instance cheaply and ship first, organic
+grids need unique footprints and pay the BatchedMesh draw cost, deferred with variety. The lots are real
+polygons on the real plane under the real sun; the template regularity is a render-and-scale choice, not
+a loss of grounding.
+
+Alternatives rejected: unique extruded footprints per generated building like the real city (full
+variety but the ADR-R15 per-building draw cost, unaffordable at district scale, and a full rebuild on
+every growth step). A GPU-side generator (blind to the headless scoring path and to node unit tests, the
+same reason the study chose CPU in ADR-R16). Non-deterministic expansion (breaks the score-equals-render
+contract and the agent's ability to refine one parameter).
+
+## ADR-R19: Clear-and-generate in a designated zone via the overlay; the real city stays as grounding frame
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: the agent needs a canvas, and the brief is "a district grows from nothing." The options are
+augmenting the real buildings in their gaps, clearing a zone and generating into it, or clearing
+everything. The immutable-baseline-plus-overlay pattern (ADR-R11) must not be corrupted, and the
+grounding (the moat) depends on real context staying visible.
+
+Decision: the district op claims a region; the real building clusters inside it move into the overlay's
+removed set (reversible, the baseline untouched); the generated massing and streets fill the cleared
+zone; and the surrounding real Toronto, its streets, its towers, and the water edge stay as the grounding
+frame and the cinematic continuation past the zone. The EditOverlay gains a generatedDistricts list (each
+with its ops, seed, instanced placements, and street graph) and the cleared-cluster semantics; the street
+and agent-graph overlays gain the stitched generated edges. The baseline model.buildings and data/ are
+never mutated, so undo, reset, and the real-versus-proposal register fall out for free, exactly as a
+height edit. The line (ADR-R07) is held by framing and by measured consequences, not by making the
+proposal look fake: the generated district renders through the same PBR, IBL, and AgX pipeline and looks
+fully real (the spectacle goal), while the UI states it is an agent-authored proposal whose consequences
+are the measured ones. A restrained grade or boundary treatment may mark the zone as authored without
+making it ugly.
+
+Consequences: the overlay extension is small and reuses the undo and immutability of ADR-R11. The
+contrast with real Toronto is preserved, which is the proof that the grounding is real. Clearing real
+buildings is itself an overlay entry, so it is undoable.
+
+Alternatives rejected: augment-only infill (St. Lawrence is dense, few gaps, and infill is not the "from
+nothing" demo). Fully greenfield void (loses the grounding frame, the cinematic continuation, and with
+them the moat). Holding the register by making the proposal look unreal (fights the spectacle mandate;
+the differentiator is measured consequences, not a fake look).
+
+## ADR-R20: The objective is tiered: hard-measured by simulators, enforced by construction, soft-judged by the agent
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: the agent must converge on a real objective, not vibes. Some goals are measurable, some can be
+made true by how the geometry is built, and some are taste. Mixing them lets the agent assert success it
+did not achieve, or search a space it does not need to.
+
+Decision: three tiers. Hard-measured by simulators, the numbers the agent reads and steers against each
+turn: sun-hours on a region (the study, ADR-R16), unit and population count (a new pure function over the
+massing: footprint area times storeys times efficiency over unit size), reachability (ADR-R22), and
+traffic load (the flow re-solve, ADR-R13, with demand generated from the district population). Enforced
+by construction, which the agent never scores because the layer cannot violate them: "stepping down to
+the water" is an ApplyGradient the massing samples, "car-free" is LayStreets carFree emitting no vehicle
+edges. Soft-judged by the agent: coherence, whether it reads as a place, variety, with no number and no
+tool. Convergence is over an objective vector with explicit tolerances (population band, park sun-hours
+floor, reach ceiling, traffic ceiling) plus the free construction guarantees and the soft tier; the agent
+iterates until the measured vector is in tolerance and no improving move remains, or a max-iteration
+budget is spent, with a deterministic better-than comparator giving the loop a stopping condition. The
+agent reports the measured vector every turn, so convergence is legible and falsifiable.
+
+Consequences: the construction tier stays out of the agent's search entirely. The measured tier is the
+moat (computed, not painted) and the agent's ground truth, above its own soft self-assessment. The
+comparator and budget keep the loop from oscillating or gaming one metric (ADR-R21 flags those failure
+modes). Unit count is the only new pure scorer; the other three are reused simulators.
+
+Alternatives rejected: a single scalar objective (lets the agent trade the park's sun for population and
+call it converged). Scoring the construction guarantees (wasted search on things that cannot be violated).
+Letting the agent self-judge the hard metrics (defeats the measured-consequence moat).
+
+## ADR-R21: The agent loop is server-side Claude tool-use; expander and scorers co-located; ops streamed to the client which re-expands
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: where the loop runs and how the build reaches the screen. The brief notes the simulators run
+server-side, but the interactive study and flow were moved client-side for latency (ADR-R16, ADR-R13).
+The apparent tension is resolved by the fact that the procedural layer and all the scorers are pure
+TypeScript that runs identically in node (they are unit-tested there today). An iteration must be cheap
+enough to run many times to convergence, and the build must stream so the user watches it live.
+
+Decision: one server process runs the agent, the procedural expander (ADR-R18), and the scorers
+(ADR-R20) together, so an iteration is a local function-call cycle with no client round-trip and no GPU.
+A Next route handler (app/api/generate/route.ts, the descendant of app/api/edit/route.ts) hosts the loop
+with claude-opus-4-8, the ADR-R17 ops as strict Zod-backed tool schemas, structured output and
+tool_choice constraining the model to emit a valid op and never prose geometry. Each turn the agent gets
+the brief, the city context, and the current proposal with its score vector, emits one op, and the server
+expands, scores, and feeds the new vector back as the tool result. The stable city context (real parcels
+and anchors, region, attribution, tool schemas, objective rubric) is a prompt-cache prefix, so every
+iteration after the first reuses it. Each accepted revision streams its ops to the client over a
+ReadableStream; the client applies them to the overlay, re-expands deterministically with the same seed
+(the determinism contract, ADR-R18), and renders the build assembling and reshaping live. Internal
+discarded trials need not stream, so the user sees a converging build. The client paths for live single
+edits (ADR-R16, ADR-R13) stay; the loop just calls the same pure functions server-side.
+
+Consequences: convergence is tight and local; the client is the theater, not the judge. This is the
+existing mutation spine (server-side strict tool-use feeding the same ops the gizmos produce) scaled to a
+multi-turn read-score-refine cycle with a richer union, a prompt cache, and a stream. Two risks ride
+here: the agent oscillating or gaming a metric (bounded by the ADR-R20 comparator and budget), and the
+op vocabulary needing a revision once the real agent reaches for an expression the union cannot form
+(expected after this unit).
+
+Alternatives rejected: a per-iteration client round-trip to score on the device simulators (network
+latency multiplied by the iteration count, a chatty loop). Running the agent client-side (exposes the key
+and the loop, and cannot prompt-cache or stream cleanly). Streaming geometry instead of ops (fatter
+payload and discards the determinism contract that lets the client re-expand and proves score equals
+render).
+
+## ADR-R22: Reachability is a walk isochrone on the existing Dijkstra over the stitched graph
+
+Status: Accepted
+Date: 2026-06-25
+
+Context: "a park reachable in five minutes" needs an isochrone on the road graph, and the question is
+whether it is in scope and how it is exposed. The substrate exists: src/network/shortestPath.ts already
+has shortestPathTree, a heap-based one-to-all Dijkstra with a dynamic per-edge cost. The one real
+dependency is that walk reachability inside a just-drawn district depends on the streets the agent just
+laid.
+
+Decision: in scope, as a new thin module (src/reach) over the existing Dijkstra, no new graph algorithm.
+A walk isochrone is shortestPathTree from a source over the walk graph with cost equal to length over
+walk speed, thresholded at the time budget; "park reachable in five minutes" is, for every residential
+lot, whether the nearest park entrance is within that isochrone. The procedural layer (ADR-R18) emits a
+walk graph for the generated grid, stitched to the real network (the same boundary stitching the streets
+already do), so the isochrone runs over one connected graph including the new streets. Exposed two ways,
+the same dual life as the sun study: as an agent scoring tool (reachability(fromRegion, withinMinutes,
+mode) returning the reached fraction and worst-case minutes, ADR-R20), and later as a live client overlay
+painting the isochrone on the ground.
+
+Consequences: a measured reachability number for the agent to converge against, cheap enough to run every
+iteration (one Dijkstra tree). The generated walk graph and the stitching are the real work and land in
+the build with the scoring tools (G4); the stitching is load-bearing for both reachability and traffic
+and is flagged as easy to underestimate (architecture section 20).
+
+Alternatives rejected: a Euclidean radius (ignores the street network and the car-free grid, so it is not
+grounded). A new isochrone algorithm (the existing one-to-all Dijkstra already computes exactly the tree
+an isochrone thresholds). Reachability only over the real graph (misses the district's own internal
+walkability, which is the point of a car-free grid).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park

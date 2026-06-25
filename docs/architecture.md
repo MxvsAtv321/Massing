@@ -1,12 +1,21 @@
 # Massing, Architecture Reference (rebuild)
 
-Status: target architecture for the ground-up rebuild into a cinematic, real-time,
-interactive city builder and simulator on real Toronto data. This document is the shared
-state. It supersedes the prior shadow-honesty architecture in full. Settled decisions live
-in `docs/decisions.md` as ADRs; this document is the design and the reasoning.
+Status: target architecture for a cinematic, real-time, interactive city builder and
+simulator on real Toronto data, now extended into a generative engine for the built world:
+describe a district in plain English and an agent conjures it in grounded, cinematic 3D. This
+document is the shared state. It supersedes the prior shadow-honesty architecture in full.
+Settled decisions live in `docs/decisions.md` as ADRs; this document is the design and the
+reasoning.
+
+The document is in two parts. Part I (sections 1 to 10) is the rendering, simulation, and
+interaction engine, built across Units 0 to 8 and now standing. Part II (sections 11 to 20) is
+the generative extension: the two new subsystems (the procedural generation layer and the
+generative agent loop) and how they compose with the engine.
 
 Read sections 1 (identity), 3 (rendering), and 4 (simulation) first. They are the spine.
-Section 8 is the rebuild sequence. Section 9 is the design work to commission.
+Section 8 is the original rebuild sequence (Units 0 to 8, complete). For the generative work,
+read section 11 (overview and the spine principle), then 12 (the op vocabulary, make-or-break)
+and 19 (the generative build sequence). Section 9 is the design work to commission.
 
 ---
 
@@ -38,6 +47,30 @@ do-not-measure list, provenance-as-contract). It carries forward exactly one pri
 simulated values are never disguised as measured truth. In the new product that principle is
 served by visual and linguistic register (simulated things look and read as simulated), not
 by a badge subsystem.
+
+### 1.1 The generative mandate (Part II)
+
+The mandate now extends from reshaping the city to conjuring it. You type a brief, "a car-free
+waterfront district for forty thousand people, maximum sunlight, a park reachable in five
+minutes, towers stepping down to the water," and an agent grows a neighborhood out of nothing:
+blocks and streets and glass towers assembling under golden-hour light, and when it settles the
+sun-access heatmap blooms across the ground and traffic flows through the streets it just drew.
+Then you say "denser near the water, keep the park sunny," and it reshapes live. The target is
+that demo. Optimize for the gasp.
+
+The moat is the grounding. Every other generative tool paints a plausible image. This one builds
+on real parcels, real streets, and the real sun, and its consequences are computed, not painted:
+the sun-hours on the park are raymarched against real geometry, the unit count is derived from
+the massing, the five-minute reach is an isochrone on the real road graph. The grounding is not a
+brake on the magic. It is the thing a competitor who just wraps an LLM cannot fake.
+
+The architectural spine of the extension, which the rest of Part II elaborates: the agent emits
+high-level creative intent, and a deterministic procedural layer turns intent into geometry. LLMs
+are weak at spatial layout, so the agent never places a building by coordinate. It emits
+generative directives over real regions, and a procedural generator expands them into real
+footprints, heights, and streets on the real ground. Creative intent in the agent, spatial
+correctness in code. This is the project's existing principle (the model never computes geometry,
+it emits constrained ops, ADR-004) scaled from one building to a whole district.
 
 ---
 
@@ -448,3 +481,539 @@ Produce these before or alongside the build and hand them back. Be specific:
   across hardware. The fixed-timestep loop keeps the simulation stable, but exact determinism
   is not promised for GPU systems. This is acceptable: the product is a creative simulator, not
   a forecasting tool, and the one line we hold is register, not reproducibility.
+
+---
+
+# Part II: the generative engine
+
+Part I built the engine: the lit, grounded city, the simulators, the editor, the overlay. Part II
+turns it into a generative engine for the built world. Two new subsystems, everything else reused:
+
+1. The procedural generation layer, the hands. Typed generative ops over real regions that
+   deterministically produce grounded massing and streets, casting real shadows and real flow.
+   Built and gated first, with no agent involved.
+2. The generative agent loop, the mind. Goal in, the agent emits generative ops into a sandbox
+   overlay, the procedural layer builds them, the simulators score the result, the agent reads
+   the deltas, critiques itself, refines, converges, and presents, streamed to the renderer so
+   the user watches it build live.
+
+The whole of Part II rests on one principle, restated because every decision below is a
+consequence of it: creative intent lives in the agent, spatial correctness lives in code. The
+agent expresses goals and shaping fields over real regions; the procedural layer owns every
+coordinate. The boundary between the two (section 12) is the make-or-break design.
+
+---
+
+## 11. Overview and the data flow
+
+The generative loop is a closed cycle that the user watches from the outside:
+
+```
+brief ("car-free waterfront for 40k, sunny park, towers to the water")
+  -> agent (server, Claude tool-use, opus-4-8)
+       emits generative ops over real regions
+  -> procedural layer (pure TS, server side this turn)
+       expands ops + seed -> grounded district (footprints, heights, street graph)
+  -> simulators (pure TS, server side this turn)
+       sun-hours, unit count, reachability, traffic -> a score vector
+  -> agent reads score deltas, critiques, refines ops  --\
+       (loop until the objective vector is met or budget spent)
+  -> on each accepted revision, stream the ops to the client
+  -> client re-expands the same ops + seed (determinism) and renders
+       the district assembling live; study heatmap blooms; flow runs
+```
+
+Two facts make this tractable, both inherited from Part I rather than invented:
+
+- The procedural layer and the simulators are pure TypeScript. The study raymarch, the BPR solve,
+  and the Dijkstra tree already run headless in node (they are unit-tested there today). So an
+  iteration of the loop needs no client round-trip and no GPU: the agent, the expander, and the
+  scorers all run in one server process, tight and fast. The client is the theater, not the
+  judge.
+- The procedural layer is isomorphic. The same expander runs in node (to score) and in the
+  browser (to render), like the `src/solar` and `src/study` split. The server scores geometry A;
+  the client, fed the same ops and seed, renders the identical geometry A. The user sees exactly
+  what the agent measured. This determinism contract is load-bearing for the moat (section 20).
+
+This resolves an apparent tension in the brief. The interactive simulators (the study worker,
+the flow re-solve) were deliberately moved client-side in Part I for latency (ADR-R16, ADR-R13).
+The agent loop does not contradict that. It calls the same pure functions server-side, where the
+loop lives; the client paths stay for live single edits. The math is portable by design, so it
+runs wherever the caller is.
+
+---
+
+## 12. The generative op vocabulary (Decision 1, make-or-break)
+
+This is the seam the whole project turns on. Too low-level and the agent drowns in coordinates,
+which is the failure mode of asking an LLM to do spatial layout. Too high-level and the agent
+cannot express the goal or steer a refinement, and the procedural layer becomes one
+un-steerable black box.
+
+The resolving idea: the agent emits intent over real regions and anchors, never geometry. An op
+carries a program, a target, an envelope, or a field, plus references to real features (a region,
+the water edge, the park). It never carries a footprint, a street centerline, or a height in
+metres at a coordinate. Every numeric is bounded. The procedural layer (section 13) turns each op
+into geometry deterministically.
+
+The vocabulary is a small closed union, the direct descendant of the `EditOp` union (ADR-004,
+ADR-R11). Five intent ops plus a region/anchor reference grammar:
+
+- `DefineDistrict { region, seed }`. Claim a region of real ground as the generative canvas. The
+  region is a reference (section 14): an ENU rectangle or polygon, or a named handle the agent
+  was given in its context (for example "the cleared waterfront zone"). The seed pins the PRNG so
+  the district is reproducible and re-expands identically on the client. Everything else targets a
+  district by id.
+
+- `LayStreets { district, pattern, blockSize, primaryAxis, carFree }`. The street directive.
+  `pattern` is an enum (`grid`, `perimeter`, later `organic`); `blockSize` a bounded metre range;
+  `primaryAxis` a reference (`parallelTo: waterEdge`, or a bearing) so the grid orients to a real
+  feature; `carFree` flags the streets pedestrian (no vehicle edges emitted, so car-free is true
+  by construction, section 15). The procedural layer decides every centerline and every
+  intersection, and stitches the grid to the surrounding real road graph at the boundary.
+
+- `FillBlocks { district, program, density, heightEnvelope, coverage }`. The massing directive.
+  `program` is `residential | office | mixed`; `density` a target (units per hectare, or a
+  district population target the layer divides out); `heightEnvelope` a bounded storey range,
+  optionally keyed to a gradient (below); `coverage` the share of each lot the building occupies.
+  The layer subdivides blocks into lots and extrudes a building per lot, heights drawn from the
+  envelope evaluated at the lot position. The agent says "twenty-storey residential at this
+  density"; the layer decides the lots and the exact per-building storeys.
+
+- `PlaceOpenSpace { district, where, area }`. Reserve a park or plaza. `where` is a reference
+  (a sub-region, or "near the water", or "central"); `area` a target. The layer removes those
+  blocks from the fill and grounds the open space, which the sun-access and reachability tools
+  then score.
+
+- `ApplyGradient { district, field, anchor, falloff }`. The shaping field, and the answer to
+  "stepping down to the water" and "denser near the water". `field` is `height | density`;
+  `anchor` a real reference (the water edge, the park centroid); `falloff` how the scalar decays
+  with distance from the anchor. The gradient is a function the `FillBlocks` expansion samples per
+  lot. It is how a single sentence reshapes a whole district's massing without naming one
+  building.
+
+The reference grammar (regions and anchors) is the second half of the vocabulary and just as
+important. The agent never invents a coordinate; it names a real feature the procedural layer
+resolves: `waterEdge`, `parkCentroid`, `realStreet(name)`, `region(id)`, `boundaryOf(district)`.
+These are resolved against the baked data and the current overlay, so "parallel to the water" and
+"reachable from the park" mean something concrete.
+
+The boundary, stated once and sharply. The agent owns: which region, which program, the density
+and population targets, the height envelope and its gradient, the street pattern and block scale,
+where the park goes, what is car-free. The procedural layer owns: every street centerline, every
+intersection and its connection to the real graph, every block boundary, every lot split, every
+footprint polygon, every per-building storey count within the envelope. The agent expresses the
+place; the code places the geometry.
+
+Alternatives rejected. Per-footprint ops (`AddBuilding at (e,n)` scaled up) drown the agent in
+the exact coordinate work LLMs are worst at, and make a forty-thousand-person district thousands
+of tool calls. A single monolithic `generateDistrict(prompt)` op pushes all intent into one
+opaque call the agent cannot steer: it could not act on "denser near the water" without
+re-rolling everything, and the procedural layer would become an un-decomposable mega-function. The
+five-op middle is the level at which one sentence maps to one op and a refinement changes one
+parameter.
+
+---
+
+## 13. The procedural generation layer, the hands (Decision 2)
+
+A pure, deterministic, isomorphic module (`src/generate/`) that expands an op list plus a seed
+into a grounded district. THREE-free so it unit-tests in node and runs identically server-side
+(to score) and client-side (to render), the same discipline as `src/study`. Start simple and
+grounded; architectural variety is a later upgrade.
+
+The expansion pipeline, in order:
+
+1. Resolve the district region and anchors against the real data and the overlay. The water edge,
+   the park reference, and the real boundary streets become concrete ENU geometry.
+2. Lay the street grid. For the `grid` pattern: a parametric lattice oriented to `primaryAxis`,
+   spaced by `blockSize`, clipped to the district boundary. The critical step is stitching: the
+   generated grid's perimeter intersections are connected to the nearest nodes of the real road
+   graph, so the new streets are part of one connected network. This stitching is what makes
+   reachability and traffic flow through the district rather than around it (section 20 flags it).
+3. Partition into blocks. The street centerlines bound the blocks; each block is the polygon
+   between four streets, inset by the street half-width.
+4. Subdivide blocks into lots. Start with one well-tested template: a recursive oriented-bounding-
+   box split to a target lot size, or perimeter-block lotting for the `perimeter` pattern. Lots
+   are grounded polygons on the real plane.
+5. Mass each lot. Inset the footprint by `coverage`, extrude to a height drawn from
+   `heightEnvelope` evaluated through any `ApplyGradient` field at the lot centroid, snapped to
+   whole storeys at the model's real `metresPerStorey`. Reserve `PlaceOpenSpace` blocks as ground,
+   not massing.
+
+Determinism is the contract. A seeded PRNG drives every choice (lot jitter, height within the
+envelope band, template selection). The same ops and seed produce the same geometry to the bit,
+in node and in the browser. This is why the agent can refine: re-expanding with one changed
+parameter changes only what that parameter touches, and the client render matches the server
+score exactly.
+
+Geometry strategy and the draw-call coupling. The real city is unique extrusions in a BatchedMesh
+(ADR-R09), which on the WebGPU backend costs one draw per building (ADR-R15). A generated district
+of one to three thousand buildings cannot pay that. The generated massing is therefore built to
+instance: a rectilinear grid yields regular, near-rectangular lots, so the massing is a small set
+of extrusion templates (podium, slab, point tower) placed as InstancedMesh with per-instance
+transform, footprint scale, and height. On WebGPU that is one draw per template, not per building
+(ADR-R15 already routes copies to InstancedMesh), and growing the district is growing the instance
+count with no geometry reallocation, which is most of the answer to live 60 fps (section 20). The
+grounding is preserved where it matters: the lots are real polygons on the real plane under the
+real sun; the regularity is a render-and-scale choice, not a loss of grounding. Variety comes from
+template count and per-instance jitter now, and unique extrusions for hero buildings later. This
+couples the street pattern to the render budget: rectilinear grids instance cheaply, organic grids
+need unique footprints and pay the draw-call cost, so `grid` ships first.
+
+---
+
+## 14. The canvas and the overlay extension (Decision 3)
+
+Whether the agent generates onto cleared ground or augments the real buildings, and how much real
+context stays.
+
+Decision: clear-and-generate in a designated zone, keep the rest real. The district op claims a
+region; the real building clusters inside that region move into the overlay's removed set
+(reversible, the baseline is never touched); the generated massing and streets fill the cleared
+zone; and the surrounding real Toronto, its streets, its towers, the water edge, all stay as the
+grounding frame and the cinematic continuation past the generated zone. This is the demo: a
+neighborhood grows out of nothing inside the zone while the real city frames it and the camera
+flies on past the edge into real Toronto.
+
+This reuses the immutable-baseline-plus-overlay pattern (ADR-R11) exactly, extended from
+single-building edits to a district. The current overlay holds `removedClusterIds`,
+`modifiedClusterHeights`, and `addedBuildings`. The extension adds a district object:
+
+- `removedClusterIds` gains the real clusters inside the zone (reversible clearing).
+- A new `generatedDistricts: GeneratedDistrict[]`, each holding its op list, seed, expanded
+  buildings (as instanced template placements), and its street graph.
+- The street overlay gains the generated centerlines, rendered through the existing `Streets`
+  path, and the walk/drive graph gains the stitched generated edges for the simulators.
+
+The baseline `model.buildings` and `data/` are never mutated, so undo, the real-versus-proposal
+register, and a clean reset all fall out for free, the same as a height edit. Clearing real
+buildings is itself an overlay entry, so "put it back" is undo.
+
+The register, reframed as the moat. The generated district renders through the same PBR, IBL, and
+AgX pipeline as the real city, so it looks every bit as real: that is the spectacle goal, not a
+problem to hide. The line (ADR-R07) is not held by making the proposal look fake. It is held by
+framing and by measurement: the UI states plainly that this is a proposal the agent authored, and
+its consequences are the measured ones (sun-hours raymarched, units counted, reach computed). A
+restrained grade or boundary treatment on the zone can mark it as authored without making it ugly.
+The differentiator is never "the generated city looks unreal." It is "the generated city's
+consequences are real."
+
+Alternatives rejected. Augment-only (add buildings in the gaps of the real city): St. Lawrence is
+dense, there are few gaps, and "a district grows from nothing" is the demo, not infill. Fully
+greenfield void (clear everything): loses the grounding frame and the cinematic continuation, and
+with them the moat, since the contrast with real Toronto is the proof that the grounding is real.
+
+---
+
+## 15. The scoring and objective model (Decisions 4 and 5)
+
+The agent must converge on a real objective, not vibes. Goals fall into three tiers by how they
+are enforced, and the tier decides whether the agent ever has to think about them.
+
+Hard-measured by simulators (the moat). These are computed numbers the agent reads each turn and
+steers against, each a pure function exposed as a scoring tool:
+
+- Sun-hours on a region. The Unit 8 study (ADR-R16): the off-thread heightfield raymarch over the
+  Toronto shadow-study window, returning mean sun-hours and the field over a park or plaza. Reused
+  verbatim; the region is the generated park.
+- Unit and population count. New but trivial and pure: sum over the generated massing of footprint
+  area times storeys times an efficiency factor divided by an average unit size. Deterministic
+  from the geometry the layer just built, so "forty thousand people" is a number the agent hits by
+  tuning density and envelope, not a claim.
+- Reachability (section below). The isochrone tool: is the park within a five-minute walk of the
+  district's homes.
+- Traffic load. The BPR re-solve (ADR-R13) on the stitched graph: does the new district overload
+  its access roads. Reused; demand is generated from the district's population.
+
+Enforced by construction (the agent never scores these, the layer cannot violate them). "Towers
+stepping down to the water" is an `ApplyGradient` the massing samples, so a violated step-down is
+impossible by construction; the layer builds it correct. "Car-free" is `LayStreets carFree`, so no
+vehicle edges exist in the zone. These are guarantees, not objectives, which keeps them out of the
+agent's search space entirely.
+
+Soft-judged by the agent. Coherence, whether the massing reads as a place, variety, composition.
+The agent critiques these from the streamed result and its own judgment. They have no number and
+no tool; they are the residue the hard metrics and the construction guarantees do not cover, and
+the agent is allowed to use taste there.
+
+Convergence. The objective is a vector with tolerances: population within a band, mean park
+sun-hours at or above a floor, park reach at or under five minutes, traffic under a ceiling, plus
+the construction guarantees (free) and the soft judgment. The agent iterates ops until the
+measured vector is in tolerance and no improving move remains, or a max-iteration budget is spent.
+A deterministic "is this better" comparator over the vector gives the loop a stopping condition, so
+it converges instead of oscillating (section 20 flags the failure modes). The agent reports the
+score vector every turn, so convergence is legible and falsifiable, not asserted.
+
+### 15.1 Reachability, the new consequence tool (Decision 5)
+
+In scope, and cheap, because the substrate exists. `src/network/shortestPath.ts` already has
+`shortestPathTree`, a heap-based one-to-all Dijkstra with a dynamic per-edge cost. A walk isochrone
+is that tree from a source over the walk graph with cost = length / walk speed, thresholded at the
+time budget. "A park reachable in five minutes" is: for every residential lot, is the nearest park
+entrance within the five-minute isochrone.
+
+The one real piece of work is the graph. Walk reachability inside a just-drawn district depends on
+the streets the agent just laid, so the procedural layer must emit a walk graph for the generated
+grid, stitched to the real network (the same stitching as section 13 step 2). With the stitched
+graph, the isochrone is a single Dijkstra tree, fast enough to run every iteration.
+
+Exposed two ways. As an agent scoring tool (`reachability(fromRegion, withinMinutes, mode)`
+returning the reached fraction and the worst-case minutes), and later as a live client overlay (the
+isochrone painted on the ground), the same dual life as the sun study. New module `src/reach/`,
+built on the existing Dijkstra, no new graph algorithm.
+
+---
+
+## 16. The generative agent loop, the mind (Decision 6)
+
+Confirmed: server-side Claude tool-use, `claude-opus-4-8`, strict tools and structured output,
+prompt-cached city context, ops streamed to the client. The detail:
+
+Topology. One server process runs the agent, the procedural expander, and the scorers together
+(section 11), so an iteration is a local function-call cycle with no client round-trip and no GPU.
+A Next route handler (`app/api/generate/route.ts`, the descendant of `app/api/edit/route.ts`)
+hosts the loop and streams to the client over a `ReadableStream` (SSE-style). The expander and
+scorers are the same pure modules the client uses, imported server-side.
+
+The turn. The agent is given the brief, the city context, and the current proposal with its score
+vector, and must call one of the generative tools (the section 12 union, as strict Zod-backed tool
+schemas with bounded numerics and reference enums, exactly like the `edit_building` tool today but
+richer). Structured output and `tool_choice` constrain it to emit a valid op, never prose
+geometry. The server expands the op into the sandbox overlay, scores the result, and feeds the new
+score vector back as the tool result. The agent reads the deltas, critiques, and emits the next op,
+or signals convergence.
+
+Prompt caching. The stable city context (the real parcels and anchors in the district's
+neighborhood, the region definition, the data attribution, the tool schemas, the objective rubric)
+is a single cache-control prefix, so every iteration after the first reuses it and only the
+changing tail (the latest score vector and the agent's running plan) is fresh tokens. This is what
+makes a multi-turn convergence loop affordable.
+
+Streaming and the watched build. Each accepted revision streams its ops to the client, which
+applies them to the overlay, re-expands deterministically (same seed), and renders. The client
+animates the transition: blocks rise, the grid draws, heights re-step when a gradient changes, the
+park moves. The user watches the district assemble and then reshape as the agent refines, which is
+the spectacle ("denser near the water" visibly reshaping is the gasp). Internal trial iterations
+that the agent discards need not stream; the stream carries the proposal's revisions, so the user
+sees a converging build, not flailing. On convergence the client fires the presentation: the
+sun-access heatmap blooms, the flow runs on the new streets, the camera settles into golden hour.
+
+This is the existing mutation spine scaled up. The `edit_building` route already does server-side
+Claude tool-use with a strict schema and Zod validation feeding the same `EditOp` the gizmos
+produce. The generative loop keeps that shape (strict tools, the model never computes geometry) and
+adds the multi-turn read-score-refine cycle, the richer op union, the prompt cache, and the stream.
+
+---
+
+## 17. Reuse audit for the generative direction
+
+The same audit discipline as section 2. The generative engine is mostly reuse; the new code is two
+focused modules and one route.
+
+Reused as-is (the grounded substrate and the spine patterns):
+
+- The baked data in `data/`, the ENU coordinate frame (`src/coords/`), the solar core
+  (`src/solar/`), and the build-time payload assembly (`app/page.tsx`, `loadCityModel`). The real
+  ground, the real sun, the real streets the grid stitches to. Untouched.
+- The immutable-baseline-plus-overlay pattern (`src/mutation/applyEdit.ts`, `editState.ts`,
+  ADR-R11). The generated proposal is an overlay over the untouched baseline, the same as a height
+  edit.
+- The sun-access study (`src/study/*`, ADR-R16) and its worker, as the sun-hours scoring tool.
+- The flow re-solve (`src/render/flowEngine.ts`, `src/traffic/*`, ADR-R13) as the traffic scoring
+  tool and the live flow on the generated grid.
+- `shortestPathTree` (`src/network/shortestPath.ts`) as the reachability substrate.
+- The renderer, the BatchedMesh city, and InstancedMesh for copies (ADR-R09, ADR-R15). The
+  generated massing renders as InstancedMesh templates; the real city stays a BatchedMesh.
+- The server-side Claude tool-use spine (`app/api/edit/route.ts`) as the agent loop's template.
+
+Reused with extension:
+
+- The overlay type (`EditOverlay`) gains a `generatedDistricts` list and the cleared-cluster
+  semantics (section 14). Same undo, same baseline immutability.
+- The op union. The `EditOp`/`LLMOutput` Zod surface (`src/mutation/editOp.ts`) is the model for
+  the generative op union: closed, bounded, reference-based, no geometry. New ops, same discipline.
+- `Streets` and the agent graph gain the generated centerlines and stitched edges for render and
+  for the simulators.
+- The build-time payload (`CityPayload`) gains the anchors the agent references (water edge, park,
+  named streets) and the district region handles.
+
+New (the two subsystems plus reachability):
+
+- `src/generate/` the procedural layer: the op types, the deterministic isomorphic expander
+  (street grid, block partition, lot subdivision, massing), and the seed/PRNG (sections 12, 13).
+- `src/reach/` the isochrone tool over the existing Dijkstra (section 15.1).
+- `src/agent/` and `app/api/generate/route.ts` the server-side loop: the tool schemas, the
+  read-score-refine cycle, the objective comparator, the prompt cache, the stream (section 16).
+- The score tool surface: a thin `src/score/` wrapping the study, flow, reachability, and the new
+  pure unit-count function behind clean tool signatures.
+
+---
+
+## 18. How it composes (generative)
+
+```
+data/ (baked) + real city overlay (Part I)         [unchanged baseline]
+        |
+        v
+brief --> agent loop (server)  --emit op-->  procedural expander (src/generate, server)
+   ^         |                                        |
+   |     score vector                            grounded district geometry
+   |         |                                        |
+   |     scorers (study, flow, reach, units) <--------/
+   |         |
+   |   refine / converge
+   |         |
+   \----- accepted ops --stream--> client overlay (generatedDistricts)
+                                        |
+                                        v
+                              client re-expands ops+seed (src/generate, browser)
+                                        |
+                          +-------------+--------------+
+                          v                            v
+                  InstancedMesh massing          generated Streets + graph
+                  grows incrementally                  |
+                          |                            v
+                          +----> live render <---- study heatmap, flow on new grid
+```
+
+The server side is the loop (agent, expander, scorers, all pure TS in one process). The client
+side is the theater (the same expander, the renderer, the live consequence overlays). The overlay
+is the shared contract: the agent writes ops to it server-side to score, the client reads ops from
+the stream to render, and the same seed guarantees both see the same city.
+
+---
+
+## 19. The generative build sequence (the G-series)
+
+Units 0 to 8 are complete (the lit city, context, time, editor, flow, weather, night, the
+sun-access study). The G-series builds the generative engine on that standing base. Smallest
+shippable units, each a clean conventional commit, the procedural hands first and fully gated
+before any agent. Plan only; do not start until the sequence is approved.
+
+### Unit G0: the generative op surface and the overlay extension
+
+The pure type surface: the generative op union (section 12) as Zod schemas with bounded numerics
+and the region/anchor reference grammar, and the overlay extension (`generatedDistricts`, cleared
+clusters, section 14). No expansion yet. THREE-free, node-tested: op validation, reference
+resolution against fixtures, overlay apply and undo. The analog of the original `EditOp` work.
+
+### Unit G1: the procedural expander, deterministic and headless
+
+The `src/generate/` core: ops plus seed to a grounded district (street grid, stitch to the real
+graph, block partition, lot subdivision, templated massing, section 13). THREE-free, node-tested,
+deterministic (same seed to the bit). Gated headless, the way the study math was: unit tests on
+the invariants (lots inside blocks, no footprint overlaps, heights inside the envelope, the grid
+connected to the real graph), plus a `verify:generate` script that dumps a district to GeoJSON for
+eyeball inspection. No renderer. This is the hands, proven before anything renders them.
+
+### Unit G2: the first milestone, one directive end to end, live
+
+The exact first milestone. One hard-coded directive, "fill this block with twenty-storey
+residential," driven through the G1 expander into the overlay, rendered as InstancedMesh templated
+massing growing into the BatchedMesh city, with the sun-access study (ADR-R16) re-running on that
+block so the measured consequence updates. No agent. It is first because it proves the whole
+pipeline end to end, intent to grounded geometry to live render to measured consequence, before any
+agent goes on top. Done when the directive produces grounded massing on the real ground that
+appears live and the study heatmap updates on the block, holding the performance budget on both
+paths (ADR-R08).
+
+### Unit G3: incremental live assembly and generated streets
+
+Scale G2 from a block to a district and make the assembly cinematic. Generated streets render
+through the existing `Streets` path; the district assembles block-by-block with a staggered rise;
+and the InstancedMesh growth is proven to hold 60 fps as the district grows to full size with no
+full-rebuild stutter (section 20, the headline engineering risk). Still scripted ops, no agent.
+This unit exists to nail the live-60 fps claim before the agent drives it.
+
+### Unit G4: the scoring tool surface, including reachability
+
+Expose the simulators as clean scoring tools (`src/score/`): sun-hours on a region (study), unit
+and population count (new pure function), reachability isochrone (new `src/reach/`, section 15.1),
+and traffic load (flow). Each returns a structured score for a generated district, run both
+server-side and client-side. The reachability module and the generated walk graph land here. This
+is the substrate the agent reads; no agent yet.
+
+### Unit G5: the agent loop, server-side, one goal
+
+The server-side Claude tool-use loop (`app/api/generate/route.ts`, `src/agent/`): goal in, the
+agent emits generative ops into a server sandbox, the G1 expander builds, the G4 scorers score, the
+agent reads deltas and refines, converges, and streams accepted ops to the client, which renders
+the build live (section 16). `claude-opus-4-8`, strict Zod tools, structured output, prompt-cached
+city context, `ReadableStream`. Start with one objective dimension (a population target) to prove
+the read-score-refine cycle and the stream, then widen.
+
+### Unit G6: the full objective vector, refinement, and the demo
+
+Multi-objective convergence (population, park sun-hours, reachability, step-down, car-free), the
+live refinement instruction ("denser near the water, keep the park sunny" reshaping the standing
+proposal live), and the cinematic presentation (golden-hour assembly, the sun-access bloom, flow on
+the new grid, the camera settling). This is the gasp, and the milestone the whole sequence targets.
+
+Later units: architectural variety (unique hero extrusions, more massing templates, richer
+programs), multiple simultaneous districts, the reachability overlay as a live ground paint, and a
+capture/record mode for the assembly.
+
+---
+
+## 20. Hard parts, flagged once
+
+The four the brief named, plus where the difficulty is most underestimated.
+
+- The generative op vocabulary (section 12). Make-or-break, and the kind of design that churns for
+  weeks if the abstraction is wrong. Too low-level drowns the agent, too high-level cannot steer a
+  refinement. Mitigation: G0 designs it against the demo sentence as the acceptance test, every
+  clause must map to one op or one construction guarantee, and G5 stress-tests it with the real
+  agent. Expect to revise it once after G5 shows where the agent reaches for an expression the
+  union cannot form.
+
+- Live generation holding 60 fps as the overlay grows, no full-rebuild stutter. The single most
+  underestimated engineering risk. The current `City` rebuilds the whole BatchedMesh on any change
+  to its building list (a `useMemo` over all buildings), and ADR-R15 already established that a
+  BatchedMesh on the WebGPU backend costs one draw per building, with the merge-static rework
+  deferred at 1315 buildings. A generated district of one to three thousand buildings makes that
+  deferred problem acute and collides with it head-on. The plan's answer is structural, not an
+  optimization pass: the generated massing is InstancedMesh templates (section 13), which is one
+  draw per template and grows by incrementing the instance count with no geometry reallocation, so
+  the district can assemble without a rebuild and without blowing the draw budget. This is why the
+  street pattern ships rectilinear first (organic grids need unique footprints and lose the
+  instancing). G3 exists to prove this specific claim on device before the agent drives it. If the
+  instancing does not hold the budget, the ADR-R15 merge-static rework becomes mandatory here
+  rather than deferred.
+
+- The agent's convergence and self-critique against the simulators. The risk is an agent that
+  oscillates, never settles, or games one metric (maxes population and tanks the park's sun).
+  Mitigation: a bounded objective vector with explicit tolerances, a deterministic "is this better"
+  comparator so the loop has a real stopping condition, a max-iteration budget, and the rule that
+  the simulators are ground truth while the agent's self-assessment is only the soft tier. The
+  agent must report the measured vector every turn, so a regression is visible, not hidden in
+  prose.
+
+- Spatial-intent-to-geometry expansion (section 13). The procedural layer can produce geometry that
+  is technically valid and reads as a parking lot, not a city: overlapping lots, streets that do
+  not connect, massing with no rhythm. The grounding (stitching to real streets, orienting to the
+  water, the height gradient) is what makes it read as a place, and that is genuinely hard urban
+  design expressed in code. Mitigation: one well-tested template proven by the G1 GeoJSON dump and
+  on-device eyes before variety, and variety treated explicitly as a later upgrade.
+
+Where the difficulty is most underestimated, called out because they are easy to wave past:
+
+- Street-network stitching. Connecting the generated grid to the real Toronto road graph so
+  reachability and traffic actually flow through the district is fiddly graph surgery (snapping
+  perimeter intersections to real nodes, splitting real edges, keeping the graph a single connected
+  component). It is load-bearing for two of the four scoring tools, and it is the thing most likely
+  to be hand-waved in planning and painful in build. It lands in G1 and is exercised hard in G4.
+
+- The determinism contract across server-expand and client-expand. If the server scores geometry A
+  and the client renders geometry B because a PRNG or a float diverged between node and the browser,
+  the measured consequence the user sees will silently not match what the agent converged on, which
+  breaks the moat quietly and is hard to detect. The isomorphic expander must be bit-stable across
+  node and the browser, which constrains the PRNG and the arithmetic and needs a cross-environment
+  test, not just a node test.
+
+- The register under photoreal rendering. The generated district renders through the same pipeline
+  as the real city, so it looks exactly as real. That is the spectacle, but it means the
+  real-versus-proposal line (ADR-R07) cannot lean on the proposal looking fake. It is held entirely
+  by framing and by the measured consequences, which is a UI and product-copy responsibility, not a
+  rendering one, and is easy to forget until the proposal is indistinguishable from Toronto and
+  nothing says so.
