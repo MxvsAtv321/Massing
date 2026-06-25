@@ -9,10 +9,11 @@ import { daylightFor, skyGradeFor } from "./daylight";
 import { updateProceduralSky, type SkyHandle } from "./environment";
 import { dayClock } from "./dayClockStore";
 import { daylightLive } from "./daylightStore";
+import { studyState } from "./studyStore";
 import type { ModelBounds } from "./types";
 
-// The day runs on 2026-06-21 for now; a date picker is a later beat (Unit 3a).
-const DATE = "2026-06-21";
+// The calendar date is now shared, driven by the date control (studyStore), so the
+// sun runs on whichever day the study selects. Closes the former hardcoded-date TODO.
 const ENV_INTENSITY = 0.6;
 
 // Stylized moonlight: a fixed high direction (art-directed, not the real moon
@@ -109,7 +110,7 @@ export function Lighting({
 
   useFrame((_, delta) => {
     const minutes = dayClock.tick(delta);
-    const sun = sunAtMinutes(originLatLon, DATE, minutes);
+    const sun = sunAtMinutes(originLatLon, studyState.getDate(), minutes);
     const grade = daylightFor(sun.altitude);
     const skyGrade = skyGradeFor(sun.altitude);
     // Publish the live day factor so traffic (and later window lights) can ramp

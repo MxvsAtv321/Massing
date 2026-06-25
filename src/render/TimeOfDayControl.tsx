@@ -1,10 +1,9 @@
 "use client";
 
 import { dayClock, useDayClock } from "./dayClockStore";
+import { studyState, useStudyState } from "./studyStore";
 import { toTorontoUtcMinutes, formatTorontoTime } from "../solar/time";
 import { MINUTES_PER_DAY } from "./dayClock";
-
-const DATE = "2026-06-21";
 
 // How long a full day takes in real seconds -> sim minutes per real second.
 const SPEEDS = [
@@ -14,12 +13,22 @@ const SPEEDS = [
   { label: "4s", speed: MINUTES_PER_DAY / 4 },
 ];
 
+// Season presets for the date control. The autumn equinox is the Toronto
+// shadow-study date the sun-access study runs on; the others bracket the year.
+const DATES = [
+  { label: "Mar 20", date: "2026-03-20" }, // spring equinox
+  { label: "Jun 21", date: "2026-06-21" }, // summer solstice
+  { label: "Sep 21", date: "2026-09-21" }, // autumn equinox (bylaw)
+  { label: "Dec 21", date: "2026-12-21" }, // winter solstice
+];
+
 // DOM overlay to scrub and play the time of day. Dev-grade for now; folds into
 // the real HUD when the editor UI lands. Lives outside the canvas and talks to
 // the same clock the canvas advances (dayClockStore).
 export function TimeOfDayControl() {
   const { minutes, playing, speed } = useDayClock();
-  const label = formatTorontoTime(toTorontoUtcMinutes(DATE, minutes));
+  const { date } = useStudyState();
+  const label = formatTorontoTime(toTorontoUtcMinutes(date, minutes));
 
   return (
     <div
@@ -43,6 +52,28 @@ export function TimeOfDayControl() {
         userSelect: "none",
       }}
     >
+      <select
+        value={date}
+        onChange={(e) => studyState.setDate(e.target.value)}
+        aria-label="Study date"
+        title="Date of year (the equinox is the Toronto shadow-study date)"
+        style={{
+          background: "transparent",
+          border: "1px solid rgba(255,255,255,0.12)",
+          borderRadius: 7,
+          color: "#f0e2cf",
+          font: "inherit",
+          padding: "2px 6px",
+          cursor: "pointer",
+        }}
+      >
+        {DATES.map((d) => (
+          <option key={d.date} value={d.date} style={{ color: "#101216" }}>
+            {d.label}
+          </option>
+        ))}
+      </select>
+
       <button
         onClick={() => dayClock.setPlaying(!playing)}
         aria-label={playing ? "Pause" : "Play"}
