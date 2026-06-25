@@ -90,9 +90,14 @@ export function Lighting({
     );
     if (!isWebGPU) return;
 
+    // Shadow cost is per-fragment at low sun: every lit fragment samples each
+    // cascade, so a low wide view of the whole city is fill-bound. Three cascades
+    // instead of four cuts that sampling by a quarter, and a tighter maxFar (the
+    // context ring casts no shadows, so shadows only need to reach the city edge)
+    // keeps each cascade dense, which holds quality as the count drops.
     const node = new CSMShadowNode(light, {
-      cascades: 4,
-      maxFar: Math.max(bounds.radius * 3.5, 1500),
+      cascades: 3,
+      maxFar: Math.max(bounds.radius * 2.0, 1100),
       mode: "practical",
       lightMargin: Math.max(bounds.radius * 1.5, 800),
     });
@@ -180,8 +185,8 @@ export function Lighting({
       <directionalLight
         ref={lightRef}
         castShadow
-        shadow-mapSize-width={2048}
-        shadow-mapSize-height={2048}
+        shadow-mapSize-width={1024}
+        shadow-mapSize-height={1024}
         shadow-camera-near={1}
         shadow-camera-far={dist * 3 + bounds.radius * 2}
         shadow-camera-left={-bounds.radius * 1.6}
