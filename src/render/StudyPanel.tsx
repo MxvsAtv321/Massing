@@ -2,7 +2,7 @@
 
 import { useStudyState } from "./studyStore";
 import { meanSunHours, sunlitFraction } from "../study/sunHours";
-import { SUNLIT_MIN_HOURS } from "../study/netNewShadow";
+import { SUNLIT_MIN_HOURS, NET_NEW_THRESHOLD_HOURS } from "../study/netNewShadow";
 
 // The sun-access study readout (Unit 8, increment 8.4). Shows the region, the bylaw
 // date and window, and once a study has run the mean direct-sun hours and the sunlit
@@ -10,11 +10,13 @@ import { SUNLIT_MIN_HOURS } from "../study/netNewShadow";
 // live exploratory study, with the window and date always visible so the number is
 // legible and falsifiable. No badge, no pass/fail verdict.
 export function StudyPanel() {
-  const { status, field, date, region } = useStudyState();
+  const { status, field, result, date, region } = useStudyState();
   const ready = status === "ready" && field !== null;
   const mean = ready ? meanSunHours(field) : 0;
   const max = field ? field.maxPossibleHours : 9;
   const lit = ready ? sunlitFraction(field, SUNLIT_MIN_HOURS) : 0;
+  // Net-new shadow reads as meaningful only once an edit has removed some sun.
+  const netNew = result && result.netNewShadowHours > 0.05 ? result : null;
 
   return (
     <div
@@ -60,6 +62,16 @@ export function StudyPanel() {
           <div>
             Sunlit area <b style={{ color: "#ffcf8a" }}>{Math.round(lit * 100)}%</b>
           </div>
+          {netNew && (
+            <div style={{ color: netNew.exceedsThreshold ? "#ff9d6e" : "#9fd0a8" }}>
+              Net-new shadow <b>+{netNew.netNewShadowHours.toFixed(1)} h</b>
+              <span style={{ opacity: 0.6 }}>
+                {" "}
+                {netNew.exceedsThreshold ? "over" : "within"} the{" "}
+                {NET_NEW_THRESHOLD_HOURS.toFixed(1)} h line
+              </span>
+            </div>
+          )}
         </div>
       )}
 

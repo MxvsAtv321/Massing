@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { parseRegions } from "../study/region";
-import type { AnalysisRegion, RegionField } from "../study/studyTypes";
+import type { AnalysisRegion, RegionField, StudyResult } from "../study/studyTypes";
 import studyRegionsJson from "../../data/study-regions.json";
 
 // The active calendar date and analysis region for the scene and the sun-access
@@ -22,6 +22,7 @@ export type StudyState = {
   region: AnalysisRegion; // the open space the study measures, ENU metres
   status: StudyStatus; // study lifecycle, for the panel and the heatmap
   field: RegionField | null; // the computed sun-hours field, null until first run
+  result: StudyResult | null; // net-new metric vs the unedited baseline, null until first run
 };
 
 const SCENE_OPEN_DATE = "2026-06-21"; // summer solstice, the established opening look
@@ -37,6 +38,7 @@ const state: StudyState = {
   region: { ...DEFAULT_REGION },
   status: "idle",
   field: null,
+  result: null,
 };
 let snapshot: StudyState = { ...state };
 const listeners = new Set<() => void>();
@@ -68,6 +70,10 @@ export const studyState = {
   },
   setField(field: RegionField | null): void {
     state.field = field;
+    emit();
+  },
+  setResult(result: StudyResult | null): void {
+    state.result = result;
     emit();
   },
   setStatus(status: StudyStatus): void {

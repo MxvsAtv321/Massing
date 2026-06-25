@@ -5,6 +5,11 @@ import { meanSunHours, sunlitFraction } from "./sunHours";
 // boundary for the newly-shadowed count. Exploratory, tunable; not a legal figure.
 export const SUNLIT_MIN_HOURS = 1;
 
+// The bylaw dial: net-new shadow (mean sun-hours an edit removes from the region)
+// above this reads as crossing the line. Shown as a line the delta crosses, never a
+// pass/fail verdict (ADR-R16). Tunable; not a legal threshold.
+export const NET_NEW_THRESHOLD_HOURS = 0.5;
+
 // The metric: how much sunlight an edit removes from the region. Baseline is the
 // unedited measured city, current is the city with the active edit applied; both
 // fields come from the identical rig and samples, so the difference is the edit's
