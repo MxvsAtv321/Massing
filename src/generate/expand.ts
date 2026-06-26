@@ -138,7 +138,7 @@ export function expandDistrict(
   const streets = uniqueStreets(districtGraph);
   const { graph } = stitch(
     districtGraph,
-    ctx.realBoundaryNodes ?? [],
+    ctx.realGraph ?? { nodes: [], edges: [] },
     opts.snapRadiusM ?? DEFAULT_SNAP
   );
   const gate = stitchGate(graph);

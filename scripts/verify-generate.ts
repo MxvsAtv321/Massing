@@ -6,7 +6,7 @@ import { loadRoadNetwork } from "../src/network/build";
 import { GenerativeOpSchema, type GenerativeOp } from "../src/generate/op";
 import { expandDistrict, geometrySignature } from "../src/generate/expand";
 import type { GeneratedDistrict, GenerativeContext } from "../src/generate/types";
-import type { RealBoundaryNode } from "../src/generate/stitch";
+import type { RealGraph } from "../src/generate/stitch";
 
 // Developer sanity check for the procedural expander (G1, ADR-R18), the same shape as the other
 // verify:* scripts: not a build gate, a way to exercise the math against the real snapshot. It
@@ -28,8 +28,8 @@ async function main(): Promise<void> {
     model.originLatLon
   );
 
-  // Center a sample district on the network bounding box and take the real nodes ringing it as the
-  // boundary the grid stitches to.
+  // Center a sample district on the network bounding box; the whole real graph is the network the
+  // generated grid stitches to (the gate and reachability read this one combined graph).
   let minE = Infinity, minN = Infinity, maxE = -Infinity, maxN = -Infinity;
   for (const nd of network.nodes) {
     const [e, n] = nd.enu;
@@ -42,10 +42,10 @@ async function main(): Promise<void> {
   const cy = (minN + maxN) / 2;
   const half = 150;
 
-  const realBoundaryNodes: RealBoundaryNode[] = network.nodes
-    .map((nd) => ({ id: nd.id, enu: nd.enu, d: Math.hypot(nd.enu[0] - cx, nd.enu[1] - cy) }))
-    .filter((nd) => nd.d > half * 0.9 && nd.d < half * 1.8)
-    .map((nd) => ({ id: nd.id, enu: nd.enu }));
+  const realGraph: RealGraph = {
+    nodes: network.nodes.map((nd) => ({ id: nd.id, enu: nd.enu })),
+    edges: network.edges.map((e) => ({ from: e.from, to: e.to, lengthMetres: e.lengthMetres })),
+  };
 
   const southEdge: [number, number][] = [[cx - half, cy - half], [cx + half, cy - half]];
 
@@ -55,7 +55,7 @@ async function main(): Promise<void> {
     districtBoundaries: {},
     clusterCentroids: {},
     waterEdge: southEdge,
-    realBoundaryNodes,
+    realGraph,
   };
 
   const ops: GenerativeOp[] = [
@@ -80,7 +80,7 @@ async function main(): Promise<void> {
   const fill = a.fillResults[0];
 
   console.log("[verify:generate] sample district over the real network");
-  console.log(`  boundary nodes considered: ${realBoundaryNodes.length}`);
+  console.log(`  real graph: ${realGraph.nodes.length} nodes, ${realGraph.edges.length} edges`);
   console.log(`  blocks ${a.blocks.length}, open space ${a.openSpace.length}, lots ${a.lots.length}, buildings ${a.massing.length}`);
   if (fill) {
     console.log(`  units: requested ${fill.requestedUnits}, achieved ${fill.achievedUnits}, shortfall ${fill.shortfall}, met ${fill.metTarget}`);

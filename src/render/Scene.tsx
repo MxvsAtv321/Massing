@@ -103,10 +103,10 @@ export function Scene({ payload }: { payload: CityPayload }) {
       streets: {},
       districtBoundaries: {},
       clusterCentroids: clusterCentroidsEnu,
-      realBoundaryNodes: [],
+      realGraph: payload.realGraph,
       roadCenterlines,
     }),
-    [clusterCentroidsEnu, roadCenterlines]
+    [clusterCentroidsEnu, roadCenterlines, payload.realGraph]
   );
   const genOpts = useMemo(
     () => ({ metresPerStorey: payload.metresPerStorey, snapRadiusM: 60, roadBufferM: 14 }),

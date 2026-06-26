@@ -151,6 +151,14 @@ export default async function Page() {
     clusterNodeId,
   };
 
+  // Real road graph (nodes with ENU + edges with lengths) the generated grid stitches to, for the
+  // connectivity gate and the reachability isochrone (G4). Walk is symmetric, so directedness is
+  // resolved downstream in the stitch.
+  const realGraph = {
+    nodes: graph.nodes.map((n) => ({ id: n.id, enu: n.enu })),
+    edges: graph.edges.map((e) => ({ from: e.from, to: e.to, lengthMetres: e.lengthMetres })),
+  };
+
   return (
     <CanvasClient
       payload={{
@@ -159,6 +167,7 @@ export default async function Page() {
         clusters: model.clusters,
         network,
         reactive,
+        realGraph,
         originLatLon: model.originLatLon,
         metresPerStorey: model.sources.metresPerStorey,
       }}

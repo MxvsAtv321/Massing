@@ -18,7 +18,10 @@ const CTX: GenerativeContext = {
   districtBoundaries: {},
   clusterCentroids: {},
   waterEdge: WATER,
-  realBoundaryNodes: [{ id: "r1", enu: [210, 0] }],
+  realGraph: {
+    nodes: [{ id: "r1", enu: [210, 0] }, { id: "r2", enu: [240, 0] }],
+    edges: [{ from: "r1", to: "r2", lengthMetres: 30 }],
+  },
 };
 
 const OPTS: ExpandOpts = { metresPerStorey: 3, snapRadiusM: 60 };
@@ -53,21 +56,34 @@ describe("expandDistrict", () => {
 // ─── Determinism (the headless half of the ADR-R23 gate) ────────────────────────
 
 describe("expandDistrict determinism", () => {
-  it("produces identical geometry for the same ops and seed", () => {
+  it("produces identical geometry and graph for the same ops and seed", () => {
     const a = expandDistrict(district(), CTX, OPTS);
     const b = expandDistrict(district(), CTX, OPTS);
     expect(a.massing).toEqual(b.massing);
     expect(geometrySignature(a)).toBe(geometrySignature(b));
+    // The combined graph is new geometry feeding the determinism gate; assert it too (G4).
+    expect(a.graph.nodes).toEqual(b.graph.nodes);
+    expect(a.graph.edges).toEqual(b.graph.edges);
   });
 
   it("is independent of context collection order", () => {
     const reordered: GenerativeContext = {
       ...CTX,
-      realBoundaryNodes: [{ id: "rX", enu: [9999, 9999] }, { id: "r1", enu: [210, 0] }],
+      realGraph: {
+        nodes: [{ id: "r2", enu: [240, 0] }, { id: "r1", enu: [210, 0] }],
+        edges: [{ from: "r1", to: "r2", lengthMetres: 30 }],
+      },
     };
     const a = expandDistrict(district(), CTX, OPTS);
     const b = expandDistrict(district(), reordered, OPTS);
     expect(geometrySignature(a)).toBe(geometrySignature(b));
+  });
+
+  it("renders the same streets and massing regardless of the real graph (stitch upgrade is invisible)", () => {
+    const withGraph = expandDistrict(district(), CTX, OPTS);
+    const noGraph = expandDistrict(district(), { ...CTX, realGraph: undefined }, OPTS);
+    expect(withGraph.streets).toEqual(noGraph.streets);
+    expect(withGraph.massing).toEqual(noGraph.massing);
   });
 });
 

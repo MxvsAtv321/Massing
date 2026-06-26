@@ -1,30 +1,35 @@
 import { analyzeConnectivity } from "../network/connectivity";
 import type { Block } from "./blocks";
 
-// Stitch the generated street grid to the real road graph and check it joins as one connected
-// component (the stitching gate, ADR-R23). Walk reachability and traffic both run over the stitched
-// graph, so a district that looks connected but is a separate component yields a confidently wrong
-// isochrone and flow with no visible symptom. The real boundary nodes are passed in as context (the
-// expander never loads the network itself, ADR-R18), so this module stays pure and fixture-testable
-// while the verify script exercises the real graph. Deterministic: nodes and edges are emitted in
-// block and corner order, never from a Set's iteration order.
+// Stitch the generated street grid to the real road graph into one canonical network, and check it
+// joins as a single connected component (the stitching gate, ADR-R23). This is the one graph that
+// both the connectivity gate and the reachability isochrone (src/reach) read, so a score can never
+// describe a different city than the gate verified (the one-source-of-truth rule, G4). Upgraded from
+// the G1 anchor model: the real side now carries its real nodes and real edge lengths, because an
+// isochrone needs real topology and distances, not a collapsed anchor. Deterministic: nodes and edges
+// are emitted in block, corner, and input order, never from a Set's iteration order.
+//
+// The rendered streets are NOT derived from this graph; they come from buildDistrictGraph (the grid
+// only), so upgrading the stitch cannot move what G2 and G3 draw (asserted in the tests).
 
 export type StitchNode = { id: string; enu: [number, number] };
-export type StitchEdge = { from: string; to: string };
+export type StitchEdge = { from: string; to: string; lengthMetres: number };
 export type StitchGraph = {
   nodes: StitchNode[];
   edges: StitchEdge[]; // undirected modeled as a directed edge each way
   adjacency: Map<string, number[]>; // node id -> outgoing edge indices
 };
 
-// A real road-network node the generated grid must connect to.
-export type RealBoundaryNode = { id: string; enu: [number, number] };
-
-const REAL_ANCHOR = "real:anchor";
+// The real road graph the generated grid stitches to. Edges are directed in the source but walk is
+// symmetric, so the stitch adds each one both ways.
+export type RealGraph = {
+  nodes: StitchNode[];
+  edges: { from: string; to: string; lengthMetres: number }[];
+};
 
 // The undirected topological graph of a gridded district: nodes are block corners (deduped by grid
-// index), edges are block sides. Each undirected side is a directed edge each way, so Tarjan SCC
-// connectivity equals undirected connectivity.
+// index), edges are block sides carrying their ENU length. This is the grid-only graph; the rendered
+// streets read from it (uniqueStreets in expand), so it must not change when the real side changes.
 export function buildDistrictGraph(blocks: Block[]): StitchGraph {
   const nodes: StitchNode[] = [];
   const nodeIndex = new Map<string, number>();
@@ -43,8 +48,11 @@ export function buildDistrictGraph(blocks: Block[]): StitchGraph {
     const key = a < b ? `${a}|${b}` : `${b}|${a}`;
     if (edgeSeen.has(key)) return;
     edgeSeen.add(key);
-    edges.push({ from: a, to: b });
-    edges.push({ from: b, to: a });
+    const ea = nodes[nodeIndex.get(a)!].enu;
+    const eb = nodes[nodeIndex.get(b)!].enu;
+    const len = Math.hypot(ea[0] - eb[0], ea[1] - eb[1]);
+    edges.push({ from: a, to: b, lengthMetres: len });
+    edges.push({ from: b, to: a, lengthMetres: len });
   };
 
   for (const blk of blocks) {
@@ -62,43 +70,39 @@ export function buildDistrictGraph(blocks: Block[]): StitchGraph {
   return { nodes, edges, adjacency: buildAdjacency(nodes, edges) };
 }
 
-// Stitch the district graph to the real network. Every real boundary node joins a synthetic anchor
-// (they are all mutually reachable on the real network, which this graph does not otherwise carry),
-// and each connects to the nearest grid node within snapRadius. Returns the combined graph and the
-// connector count.
+// Combine the district grid with the real graph: add the real nodes and real edges (both ways for
+// walk), then connect each grid node to its nearest real node within snapRadius. Returns the combined
+// graph and the connector count.
 export function stitch(
   grid: StitchGraph,
-  realBoundary: RealBoundaryNode[],
+  real: RealGraph,
   snapRadiusM: number
 ): { graph: StitchGraph; connectorCount: number } {
-  const nodes: StitchNode[] = grid.nodes.slice();
+  const nodes: StitchNode[] = grid.nodes.concat(real.nodes);
   const edges: StitchEdge[] = grid.edges.slice();
-  const addUndirected = (a: string, b: string): void => {
-    edges.push({ from: a, to: b });
-    edges.push({ from: b, to: a });
-  };
-
-  if (realBoundary.length > 0) nodes.push({ id: REAL_ANCHOR, enu: [0, 0] });
+  for (const e of real.edges) {
+    edges.push({ from: e.from, to: e.to, lengthMetres: e.lengthMetres });
+    edges.push({ from: e.to, to: e.from, lengthMetres: e.lengthMetres });
+  }
 
   let connectorCount = 0;
   const r2 = snapRadiusM * snapRadiusM;
-
-  for (const rb of realBoundary) {
-    nodes.push({ id: rb.id, enu: rb.enu });
-    addUndirected(REAL_ANCHOR, rb.id); // the real network connects its own nodes
+  for (const gn of grid.nodes) {
     let best = "";
     let bestD2 = Infinity;
-    for (const gn of grid.nodes) {
-      const de = gn.enu[0] - rb.enu[0];
-      const dn = gn.enu[1] - rb.enu[1];
+    for (const rn of real.nodes) {
+      const de = rn.enu[0] - gn.enu[0];
+      const dn = rn.enu[1] - gn.enu[1];
       const d2 = de * de + dn * dn;
       if (d2 < bestD2) {
         bestD2 = d2;
-        best = gn.id;
+        best = rn.id;
       }
     }
     if (best && bestD2 <= r2) {
-      addUndirected(rb.id, best);
+      const len = Math.sqrt(bestD2);
+      edges.push({ from: gn.id, to: best, lengthMetres: len });
+      edges.push({ from: best, to: gn.id, lengthMetres: len });
       connectorCount++;
     }
   }
@@ -107,7 +111,7 @@ export function stitch(
 }
 
 // The stitching gate: the combined graph must be a single connected component. Reuses the road
-// network's Tarjan SCC analysis (every edge is bidirectional here, so SCC equals connectivity).
+// network's Tarjan SCC (every edge is bidirectional here, so SCC equals connectivity).
 export type StitchGate = {
   connected: boolean;
   components: number;

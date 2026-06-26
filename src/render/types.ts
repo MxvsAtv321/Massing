@@ -3,6 +3,7 @@ import type { ClusterIndexEntry } from "../model/types";
 import type { AgentGraphData } from "../sim/agentGraph";
 import type { RoutableEdge } from "../traffic/routableGraph";
 import type { ODNodeFlow } from "../traffic/assignment";
+import type { RealGraph } from "../generate/stitch";
 
 // One drivable street centerline, deduped from the directed road graph.
 export type StreetSegment = {
@@ -35,6 +36,7 @@ export type CityPayload = {
   clusters: Record<string, ClusterIndexEntry>;
   network: AgentGraphData; // directed graph + flow speeds, for the living traffic
   reactive: ReactiveFlowInputs; // inputs to re-solve flow on edits (5e)
+  realGraph: RealGraph; // real road nodes + edges the generated grid stitches to (G4 reachability)
   originLatLon: [number, number]; // stored [lon, lat] (loader convention)
   metresPerStorey: number;
 };
