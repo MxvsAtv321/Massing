@@ -12,6 +12,7 @@ export type FillBlockDirective = {
   region: RegionRef;
   seed: number;
   storeys: number;
+  bearingDeg?: number; // grid orientation; default 0 (ENU east). Set to the local street bearing.
   blockSizeM?: number; // default 80, about one city block
   coverage?: number; // default 0.45
 };
@@ -26,7 +27,7 @@ export function fillBlockDirective(d: FillBlockDirective): GenerativeOp[] {
       district: d.district,
       pattern: "grid",
       blockSizeM,
-      primaryAxis: { kind: "bearing", deg: 0 },
+      primaryAxis: { kind: "bearing", deg: d.bearingDeg ?? 0 },
       carFree: true,
     },
     {

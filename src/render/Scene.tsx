@@ -28,6 +28,7 @@ import { useGenerativeLayer } from "./useGenerativeLayer";
 import { GeneratedCity } from "./GeneratedCity";
 import { studyState } from "./studyStore";
 import { fillBlockDirective } from "../generate/directive";
+import { nearestCentroid, nearestStreetBearingDeg } from "../generate/placement";
 import type { GenerativeContext } from "../generate/types";
 import type { CityPayload } from "./types";
 
@@ -168,14 +169,19 @@ export function Scene({ payload }: { payload: CityPayload }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key.toLowerCase() !== "g" || e.metaKey || e.ctrlKey) return;
+      // Land on the real building cluster nearest the center, so the block replaces real buildings
+      // rather than sitting in a street, and orient the grid to the local street bearing.
+      const center = nearestCentroid(clusterCentroidsEnu, bounds.center) ?? bounds.center;
+      const bearingDeg = nearestStreetBearingDeg(payload.streets, center) ?? 0;
+      const rotationRad = (bearingDeg * Math.PI) / 180;
       const region = {
         kind: "rect" as const,
-        center: bounds.center,
+        center,
         halfExtents: [40, 40] as [number, number],
-        rotationRad: 0,
+        rotationRad,
       };
       applyGenDirective(
-        fillBlockDirective({ district: "g1", region, seed: 1, storeys: 20 }),
+        fillBlockDirective({ district: "g1", region, seed: 1, storeys: 20, bearingDeg }),
         genContext,
         genOpts
       );
@@ -184,15 +190,15 @@ export function Scene({ payload }: { payload: CityPayload }) {
         id: "g1-study",
         name: "Generated block",
         kind: "rect",
-        center: bounds.center,
+        center,
         halfExtents: [60, 60],
-        rotationRad: 0,
+        rotationRad,
         source: "placed",
       });
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [bounds.center, applyGenDirective, genContext, genOpts]);
+  }, [bounds.center, clusterCentroidsEnu, payload.streets, applyGenDirective, genContext, genOpts]);
 
   return (
     <>
