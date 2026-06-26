@@ -47,25 +47,28 @@ export async function POST(req: NextRequest) {
   }
 
   const placement: Placement = { region: body.region, seed: body.seed, bearingDeg: body.bearingDeg };
-  const { ctx, opts } = await buildServerContext();
-  const sandbox = new Sandbox(ctx, opts);
-  const client = new Anthropic({ apiKey });
-  const agent = new ClaudeAgent(
-    client,
-    buildSystemPrompt(body.populationTarget),
-    buildTools(),
-    "Build the residential district to the population goal."
-  );
 
-  const dispatch = (sb: Sandbox, name: string, input: unknown) =>
-    executeTool(sb, name, name === "apply_op" ? prepareOp(input, placement) : input);
-
+  // All setup runs inside the stream so any failure (context load, model call, loop) comes back as a
+  // visible `error:` event rather than an opaque 500, which is what makes this debuggable on device.
   const encoder = new TextEncoder();
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (e: unknown) =>
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       try {
+        emit({ type: "status", text: "loading city context" });
+        const { ctx, opts } = await buildServerContext();
+        const sandbox = new Sandbox(ctx, opts);
+        const client = new Anthropic({ apiKey });
+        const agent = new ClaudeAgent(
+          client,
+          buildSystemPrompt(body.populationTarget),
+          buildTools(),
+          "Build the residential district to the population goal."
+        );
+        const dispatch = (sb: Sandbox, name: string, input: unknown) =>
+          executeTool(sb, name, name === "apply_op" ? prepareOp(input, placement) : input);
+
         await runLoop(
           agent,
           sandbox,
@@ -77,7 +80,7 @@ export async function POST(req: NextRequest) {
       } catch (e) {
         const message = e instanceof Error ? e.message : String(e);
         emit({ type: "status", text: `error: ${message}` });
-        emit({ type: "done", ops: [], signature: "", converged: false, reason: "error" });
+        emit({ type: "done", ops: [], signature: "", converged: false, reason: `error: ${message}` });
       }
       controller.close();
     },

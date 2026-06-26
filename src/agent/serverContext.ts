@@ -3,21 +3,18 @@ import { loadCityModel } from "../model/loadCityModel";
 import { loadRoadNetwork } from "../network/build";
 import { toRoutableGraph } from "../traffic/routableGraph";
 import { buildClusterCentroids } from "../render/cityIndex";
-import { computeModelBounds } from "../render/cityGeometry";
 import type { BuildingForScene } from "../mutation/building";
 import type { GenerativeContext } from "../generate/types";
 import type { ExpandOpts } from "../generate/expand";
-import type { ModelBounds } from "../render/types";
 
 // Build the server-side generative context from the baked data, with the SAME derivations the client
 // uses (app/page.tsx + Scene), so the agent's server expansion and the client's re-expansion of the
 // streamed ops produce identical geometry. That equality is the determinism contract the G5 signature
 // gate checks: roadCenterlines, opts, cluster centroids, and the real graph must match the client's.
+// THREE-free, so it stays a clean server module (no three import pulled into the route).
 export async function buildServerContext(): Promise<{
   ctx: GenerativeContext;
   opts: ExpandOpts;
-  bounds: ModelBounds;
-  buildings: BuildingForScene[];
 }> {
   const model = await loadCityModel(
     path.join(process.cwd(), "data", "stlawrence.geojson"),
@@ -41,8 +38,6 @@ export async function buildServerContext(): Promise<{
           ? "estimated"
           : "hypothetical",
   }));
-  const bounds = computeModelBounds(buildings);
-
   // Cluster centroids in ENU (cityIndex maps to world [x, z] = [east, -north], so flip z).
   const centroids = buildClusterCentroids(buildings);
   const clusterCentroids: Record<string, [number, number]> = {};
@@ -71,5 +66,5 @@ export async function buildServerContext(): Promise<{
     roadBufferM: 14,
   };
 
-  return { ctx, opts, bounds, buildings };
+  return { ctx, opts };
 }
