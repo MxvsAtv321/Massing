@@ -12,6 +12,7 @@ import {
   type HeightfieldBuilding,
 } from "../study/heightfield";
 import { computeInsolation } from "../study/insolation";
+import { massingToHeightfieldBuildings } from "../generate/heightfieldFromMassing";
 import { netNewShadow, NET_NEW_THRESHOLD_HOURS } from "../study/netNewShadow";
 import {
   defaultStudyConfig,
@@ -20,6 +21,7 @@ import {
 } from "../study/studyTypes";
 import type { InsolationRequest } from "../study/insolationWorker";
 import type { BuildingForScene } from "../mutation/building";
+import type { MassingPlacement } from "../generate/massing";
 import type { ModelBounds } from "./types";
 
 // The live sun-access loop (Unit 8, increment 8.5): the study re-runs on every
@@ -36,10 +38,12 @@ const REGION_RES = 128; // sun-hours field is REGION_RES x REGION_RES
 
 export function StudyController({
   buildings,
+  generatedMassing,
   bounds,
   originLatLon,
 }: {
   buildings: BuildingForScene[];
+  generatedMassing: MassingPlacement[];
   bounds: ModelBounds;
   originLatLon: [number, number];
 }) {
@@ -52,14 +56,19 @@ export function StudyController({
   // cluster's committed Y-scale). The edited field is what casts the new shadow.
   const hfBuildings = useMemo(
     () =>
-      (edited: boolean): HeightfieldBuilding[] =>
-        buildings.map((b) => ({
+      (edited: boolean): HeightfieldBuilding[] => {
+        const real = buildings.map((b) => ({
           footprint: b.footprint,
           height: edited
             ? b.heightValue * editRatios.ratioFor(b.clusterId)
             : b.heightValue,
-        })),
-    [buildings]
+        }));
+        // The generated proposal occludes the sun too, so the heatmap reflects the new block (G2).
+        return generatedMassing.length > 0
+          ? [...real, ...massingToHeightfieldBuildings(generatedMassing)]
+          : real;
+      },
+    [buildings, generatedMassing]
   );
 
   const workerRef = useRef<Worker | null>(null);
@@ -188,6 +197,19 @@ export function StudyController({
       runStudyRef.current();
     }
   });
+
+  // Re-run when the generative proposal changes (key "g"): the city's massing changed, so the cached
+  // baseline is stale; drop it and recompute the field with the proposal in it. Skip the mount pass so
+  // load behaves as before (the study otherwise still waits for "u" or an edit).
+  const genMounted = useRef(false);
+  useEffect(() => {
+    if (!genMounted.current) {
+      genMounted.current = true;
+      return;
+    }
+    baselineRef.current = null;
+    runStudyRef.current();
+  }, [generatedMassing]);
 
   return null;
 }

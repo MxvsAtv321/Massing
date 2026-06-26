@@ -24,6 +24,11 @@ import { editHud } from "./editHud";
 import { createFlowEngine, type EditedCluster } from "./flowEngine";
 import { useSelection } from "./selectionStore";
 import { useEditLayer } from "../mutation/editState";
+import { useGenerativeLayer } from "./useGenerativeLayer";
+import { GeneratedCity } from "./GeneratedCity";
+import { studyState } from "./studyStore";
+import { fillBlockDirective } from "../generate/directive";
+import type { GenerativeContext } from "../generate/types";
 import type { CityPayload } from "./types";
 
 // Composes the lit, grounded city and frames the camera on the neighborhood.
@@ -70,6 +75,45 @@ export function Scene({ payload }: { payload: CityPayload }) {
         payload.metresPerStorey
       ),
     [payload.reactive, clusterRepHeights, payload.metresPerStorey]
+  );
+
+  // Generative proposal layer (G2): a hard-coded directive (key "g") fills a real block with a
+  // 20-storey residential proposal, the cleared real buildings replaced by it, with the sun-access
+  // study reflecting the new massing. No agent yet; this proves intent to grounded geometry to live
+  // render to measured consequence (the first milestone).
+  const gen = useGenerativeLayer();
+
+  // Cluster centroids in ENU [east, north] for the canvas clearing (cityIndex maps to world
+  // [x, z] = [east, -north], so flip z back).
+  const clusterCentroidsEnu = useMemo(() => {
+    const rec: Record<string, [number, number]> = {};
+    for (const [cid, [x, z]] of clusterCentroids) rec[cid] = [x, -z];
+    return rec;
+  }, [clusterCentroids]);
+
+  const genContext: GenerativeContext = useMemo(
+    () => ({
+      namedRegions: {},
+      streets: {},
+      districtBoundaries: {},
+      clusterCentroids: clusterCentroidsEnu,
+      realBoundaryNodes: [],
+    }),
+    [clusterCentroidsEnu]
+  );
+  const genOpts = useMemo(
+    () => ({ metresPerStorey: payload.metresPerStorey, snapRadiusM: 60 }),
+    [payload.metresPerStorey]
+  );
+
+  // The real city with the proposal's cleared clusters dropped, so the generated block replaces the
+  // buildings it stands on rather than overlapping them.
+  const cityBuildings = useMemo(
+    () =>
+      gen.clearedClusterIds.size > 0
+        ? payload.buildings.filter((b) => !gen.clearedClusterIds.has(b.clusterId))
+        : payload.buildings,
+    [payload.buildings, gen.clearedClusterIds]
   );
 
   useEffect(() => {
@@ -119,6 +163,37 @@ export function Scene({ payload }: { payload: CityPayload }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo]);
 
+  // Key "g" fires the generative directive over a real block at the neighborhood center.
+  const applyGenDirective = gen.applyDirective;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "g" || e.metaKey || e.ctrlKey) return;
+      const region = {
+        kind: "rect" as const,
+        center: bounds.center,
+        halfExtents: [40, 40] as [number, number],
+        rotationRad: 0,
+      };
+      applyGenDirective(
+        fillBlockDirective({ district: "g1", region, seed: 1, storeys: 20 }),
+        genContext,
+        genOpts
+      );
+      // Point the sun-access study at the new block so its heatmap responds on it immediately.
+      studyState.setRegion({
+        id: "g1-study",
+        name: "Generated block",
+        kind: "rect",
+        center: bounds.center,
+        halfExtents: [60, 60],
+        rotationRad: 0,
+        source: "placed",
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [bounds.center, applyGenDirective, genContext, genOpts]);
+
   return (
     <>
       {/* Warm distance haze blends the slice and the surrounding context into the
@@ -130,7 +205,10 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Living traffic: glowing capsules advected on the directed graph at the
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
-      <City buildings={payload.buildings} metresPerStorey={payload.metresPerStorey} />
+      <City buildings={cityBuildings} metresPerStorey={payload.metresPerStorey} />
+      {/* The agent-authored proposal: instanced glass massing in the cleared block, cool-tinted so
+          it reads as a proposal while the measured sun study carries the grounding (G2, ADR-R19). */}
+      <GeneratedCity massing={gen.massing} />
       {/* Warm additive glow over whichever cluster is picked (selectionStore). */}
       <SelectionHighlight buildings={payload.buildings} />
       {/* Y-scale gizmo on the selected building; commits a ModifyBuilding op. */}
@@ -155,7 +233,8 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Sun-access study runner (8.3): press "u" to compute the sun-hours field
           for the region off the main thread. Result logs to the console. */}
       <StudyController
-        buildings={payload.buildings}
+        buildings={cityBuildings}
+        generatedMassing={gen.massing}
         bounds={bounds}
         originLatLon={payload.originLatLon}
       />
