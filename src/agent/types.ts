@@ -19,6 +19,14 @@ export interface Agent {
 // inside tolerance (decisive), rather than letting the agent fiddle after it has hit the number.
 export type PopulationGoal = { population: number; tolFrac: number };
 
+// The fixed placement the route injects into the agent's ops, so the model never emits a coordinate
+// (the spine, ADR-R17). Shared here so the client can build it without importing the server agent.
+export type Placement = {
+  region: { kind: "rect"; center: [number, number]; halfExtents: [number, number]; rotationRad: number };
+  seed: number;
+  bearingDeg: number;
+};
+
 // SSE events streamed to the client. The client applies `op` events to its overlay and re-expands.
 export type StreamEvent =
   | { type: "status"; text: string }

@@ -75,13 +75,16 @@ export function expandDistrict(
   const rng = splitmix32(district.seed);
   const region = resolveRegion(district.region, ctx);
 
-  const lay = district.ops.find((o): o is LayStreetsOp => o.op === "LayStreets");
+  // Last wins: a re-emitted shaping op (the agent adjusting density or height to converge, G5)
+  // replaces the prior one. Single-op cases are unchanged, so this is invisible to G1 to G4.
+  const rev = [...district.ops].reverse();
+  const lay = rev.find((o): o is LayStreetsOp => o.op === "LayStreets");
   if (!lay) throw new ExpandError(`district "${district.id}" has no LayStreets op`);
-  const fillOp = district.ops.find((o): o is FillBlocksOp => o.op === "FillBlocks");
-  const gradOp = district.ops.find(
+  const fillOp = rev.find((o): o is FillBlocksOp => o.op === "FillBlocks");
+  const gradOp = rev.find(
     (o): o is ApplyGradientOp => o.op === "ApplyGradient" && o.field === "height"
   );
-  const openOp = district.ops.find((o): o is PlaceOpenSpaceOp => o.op === "PlaceOpenSpace");
+  const openOp = rev.find((o): o is PlaceOpenSpaceOp => o.op === "PlaceOpenSpace");
 
   const axisRad = resolveAxis(lay.primaryAxis, ctx);
   const grid = buildGrid(region, axisRad, lay.blockSizeM);

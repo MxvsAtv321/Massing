@@ -1,7 +1,11 @@
-import { executeTool } from "./dispatch";
+import { executeTool, type DispatchResult } from "./dispatch";
 import { withinTolerance, type Sandbox } from "./sandbox";
 import type { Agent, Emit, PopulationGoal, ToolResult } from "./types";
 import type { GenerativeOp } from "../generate/op";
+
+// The dispatcher the loop uses. The route injects placement (region, seed, bearing) into apply_op here
+// so the agent never emits a coordinate (the spine, ADR-R17); the headless tests use executeTool plain.
+export type Dispatch = (sandbox: Sandbox, name: string, input: unknown) => DispatchResult;
 
 // The agent loop (G5): drive the Agent, execute its tool calls against the sandbox, stream accepted
 // ops, and stop the moment the population is inside tolerance, the budget is spent, or the agent
@@ -22,7 +26,8 @@ export async function runLoop(
   sandbox: Sandbox,
   goal: PopulationGoal,
   budget: number,
-  emit: Emit
+  emit: Emit,
+  dispatch: Dispatch = executeTool
 ): Promise<LoopResult> {
   let iterations = 0;
   let converged = false;
@@ -46,7 +51,7 @@ export async function runLoop(
         break outer;
       }
 
-      const r = executeTool(sandbox, tc.name, tc.input);
+      const r = dispatch(sandbox, tc.name, tc.input);
       results.push({ id: tc.id, content: JSON.stringify(r.content), isError: !r.ok });
 
       if (tc.name === "apply_op" && r.ok && r.op) {

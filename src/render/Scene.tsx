@@ -28,6 +28,7 @@ import { useGenerativeLayer } from "./useGenerativeLayer";
 import { GeneratedCity } from "./GeneratedCity";
 import { GeneratedStreets } from "./GeneratedStreets";
 import { studyState } from "./studyStore";
+import { startAgent } from "./agentClient";
 import { fillBlockDirective, districtDirective } from "../generate/directive";
 import { nearestCentroid, nearestStreetBearingDeg } from "../generate/placement";
 import type { GenerativeContext } from "../generate/types";
@@ -203,6 +204,42 @@ export function Scene({ payload }: { payload: CityPayload }) {
         halfExtents: [studyHalf, studyHalf],
         rotationRad,
         source: "placed",
+      });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [bounds.center, clusterCentroidsEnu, payload.streets, applyGenDirective, genContext, genOpts]);
+
+  // Key "a" runs the generative agent (G5): it builds a residential district to a population target,
+  // streaming its ops here to render live, while the server scores. On finish the client signature is
+  // compared to the server's (the determinism gate).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() !== "a" || e.metaKey || e.ctrlKey) return;
+      const center = nearestCentroid(clusterCentroidsEnu, bounds.center) ?? bounds.center;
+      const bearingDeg = nearestStreetBearingDeg(payload.streets, center) ?? 0;
+      const rotationRad = (bearingDeg * Math.PI) / 180;
+      const region = {
+        kind: "rect" as const,
+        center,
+        halfExtents: [110, 110] as [number, number],
+        rotationRad,
+      };
+      studyState.setRegion({
+        id: "agent-study",
+        name: "Agent district",
+        kind: "rect",
+        center,
+        halfExtents: [130, 130],
+        rotationRad,
+        source: "placed",
+      });
+      void startAgent({
+        populationTarget: 8000,
+        placement: { region, seed: 7, bearingDeg },
+        ctx: genContext,
+        expandOpts: genOpts,
+        onOps: (ops) => applyGenDirective(ops, genContext, genOpts),
       });
     };
     window.addEventListener("keydown", onKey);
