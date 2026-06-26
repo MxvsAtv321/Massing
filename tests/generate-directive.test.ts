@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { fillBlockDirective } from "../src/generate/directive";
+import { fillBlockDirective, districtDirective } from "../src/generate/directive";
 
 const REGION = {
   kind: "rect" as const,
@@ -26,5 +26,22 @@ describe("fillBlockDirective", () => {
   it("threads the district id through every op", () => {
     const ops = fillBlockDirective({ district: "blockA", region: REGION, seed: 7, storeys: 12 });
     for (const o of ops) expect(o.district).toBe("blockA");
+  });
+});
+
+describe("districtDirective", () => {
+  const REGION_BIG = {
+    kind: "rect" as const,
+    center: [0, 0] as [number, number],
+    halfExtents: [110, 110] as [number, number],
+    rotationRad: 0,
+  };
+
+  it("emits a valid define, lay, fill triple over a multi-block region", () => {
+    const ops = districtDirective({ district: "d1", region: REGION_BIG, seed: 3, storeys: 18, bearingDeg: 30 });
+    expect(ops.map((o) => o.op)).toEqual(["DefineDistrict", "LayStreets", "FillBlocks"]);
+    const lay = ops.find((o) => o.op === "LayStreets");
+    if (lay?.op !== "LayStreets") throw new Error("missing lay");
+    expect(lay.primaryAxis).toEqual({ kind: "bearing", deg: 30 });
   });
 });

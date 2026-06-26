@@ -42,3 +42,41 @@ export function fillBlockDirective(d: FillBlockDirective): GenerativeOp[] {
   ];
   return raw.map((o) => GenerativeOpSchema.parse(o));
 }
+
+// A multi-block district (G3): a bigger region than fillBlockDirective, several blocks of residential.
+// Uniform height for now; height gradients and open space are the demo upgrade (G6). The op shape is
+// the same union the agent emits later, so this is one canned district.
+export type DistrictDirective = {
+  district: string;
+  region: RegionRef;
+  seed: number;
+  storeys: number;
+  bearingDeg?: number;
+  blockSizeM?: number; // default 80; a district region spans several of these
+  coverage?: number; // default 0.4
+};
+
+export function districtDirective(d: DistrictDirective): GenerativeOp[] {
+  const blockSizeM = d.blockSizeM ?? 80;
+  const coverage = d.coverage ?? 0.4;
+  const raw = [
+    { op: "DefineDistrict", district: d.district, region: d.region, seed: d.seed },
+    {
+      op: "LayStreets",
+      district: d.district,
+      pattern: "grid",
+      blockSizeM,
+      primaryAxis: { kind: "bearing", deg: d.bearingDeg ?? 0 },
+      carFree: true,
+    },
+    {
+      op: "FillBlocks",
+      district: d.district,
+      program: "residential",
+      target: { unitsPerHa: 700 },
+      heightEnvelope: { minStoreys: d.storeys, maxStoreys: d.storeys },
+      coverage,
+    },
+  ];
+  return raw.map((o) => GenerativeOpSchema.parse(o));
+}

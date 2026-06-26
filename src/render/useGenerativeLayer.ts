@@ -17,6 +17,7 @@ import type { MassingPlacement } from "../generate/massing";
 export type GenerativeLayer = {
   expanded: ExpandedDistrict[];
   massing: MassingPlacement[];
+  streets: [number, number][][];
   clearedClusterIds: Set<string>;
   applyDirective: (ops: GenerativeOp[], ctx: GenerativeContext, opts: ExpandOpts) => void;
   clear: () => void;
@@ -41,6 +42,7 @@ export function useGenerativeLayer(): GenerativeLayer {
   }, []);
 
   const massing = useMemo(() => expanded.flatMap((e) => e.massing), [expanded]);
+  const streets = useMemo(() => expanded.flatMap((e) => e.streets), [expanded]);
 
-  return { expanded, massing, clearedClusterIds: cleared, applyDirective, clear };
+  return { expanded, massing, streets, clearedClusterIds: cleared, applyDirective, clear };
 }

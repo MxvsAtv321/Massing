@@ -26,8 +26,9 @@ import { useSelection } from "./selectionStore";
 import { useEditLayer } from "../mutation/editState";
 import { useGenerativeLayer } from "./useGenerativeLayer";
 import { GeneratedCity } from "./GeneratedCity";
+import { GeneratedStreets } from "./GeneratedStreets";
 import { studyState } from "./studyStore";
-import { fillBlockDirective } from "../generate/directive";
+import { fillBlockDirective, districtDirective } from "../generate/directive";
 import { nearestCentroid, nearestStreetBearingDeg } from "../generate/placement";
 import type { GenerativeContext } from "../generate/types";
 import type { CityPayload } from "./types";
@@ -169,34 +170,37 @@ export function Scene({ payload }: { payload: CityPayload }) {
     return () => window.removeEventListener("keydown", onKey);
   }, [undo]);
 
-  // Key "g" fires the generative directive over a real block at the neighborhood center.
+  // Generative directives: key "g" fills one real block, key "d" a multi-block district. Both land on
+  // the real cluster nearest the center, orient the grid to the local street bearing, replace the real
+  // buildings, and point the sun-access study at the result.
   const applyGenDirective = gen.applyDirective;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() !== "g" || e.metaKey || e.ctrlKey) return;
-      // Land on the real building cluster nearest the center, so the block replaces real buildings
-      // rather than sitting in a street, and orient the grid to the local street bearing.
+      if (e.metaKey || e.ctrlKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "g" && k !== "d") return;
       const center = nearestCentroid(clusterCentroidsEnu, bounds.center) ?? bounds.center;
       const bearingDeg = nearestStreetBearingDeg(payload.streets, center) ?? 0;
       const rotationRad = (bearingDeg * Math.PI) / 180;
+      const half = k === "d" ? 110 : 40;
       const region = {
         kind: "rect" as const,
         center,
-        halfExtents: [40, 40] as [number, number],
+        halfExtents: [half, half] as [number, number],
         rotationRad,
       };
-      applyGenDirective(
-        fillBlockDirective({ district: "g1", region, seed: 1, storeys: 20, bearingDeg }),
-        genContext,
-        genOpts
-      );
-      // Point the sun-access study at the new block so its heatmap responds on it immediately.
+      const ops =
+        k === "d"
+          ? districtDirective({ district: "d1", region, seed: 2, storeys: 22, bearingDeg })
+          : fillBlockDirective({ district: "g1", region, seed: 1, storeys: 20, bearingDeg });
+      applyGenDirective(ops, genContext, genOpts);
+      const studyHalf = k === "d" ? 130 : 60;
       studyState.setRegion({
-        id: "g1-study",
+        id: "gen-study",
         name: "Generated block",
         kind: "rect",
         center,
-        halfExtents: [60, 60],
+        halfExtents: [studyHalf, studyHalf],
         rotationRad,
         source: "placed",
       });
@@ -217,8 +221,10 @@ export function Scene({ payload }: { payload: CityPayload }) {
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
       <City buildings={cityBuildings} metresPerStorey={payload.metresPerStorey} />
-      {/* The agent-authored proposal: instanced glass massing in the cleared block, cool-tinted so
-          it reads as a proposal while the measured sun study carries the grounding (G2, ADR-R19). */}
+      {/* The agent-authored proposal: cool-tinted generated streets and instanced massing that rises
+          on a directive ("g" one block, "d" a district), the line held by register and the measured
+          sun study, not by looking fake (G2/G3, ADR-R18/R19). */}
+      <GeneratedStreets streets={gen.streets} />
       <GeneratedCity massing={gen.massing} />
       {/* Warm additive glow over whichever cluster is picked (selectionStore). */}
       <SelectionHighlight buildings={payload.buildings} />
