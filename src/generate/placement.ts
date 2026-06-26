@@ -34,7 +34,7 @@ export function nearestStreetBearingDeg(
     for (let i = 0; i + 1 < s.path.length; i++) {
       const a = s.path[i];
       const b = s.path[i + 1];
-      const d2 = pointToSegmentD2(to, a, b);
+      const d2 = pointToSegmentDistSq(to, a, b);
       if (d2 < bestD2) {
         bestD2 = d2;
         const deg = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
@@ -45,7 +45,7 @@ export function nearestStreetBearingDeg(
   return bearing;
 }
 
-function pointToSegmentD2(
+export function pointToSegmentDistSq(
   p: [number, number],
   a: [number, number],
   b: [number, number]

@@ -113,3 +113,19 @@ describe("fill result under a gradient", () => {
     expect(achieved).toBeLessThan(achievedMax);
   });
 });
+
+// ─── Street-aware mask: do not build on real roads ──────────────────────────────
+
+describe("street-aware mask", () => {
+  it("drops lots within the road buffer and still builds off the road", () => {
+    const road: [number, number][] = [[-200, 0], [200, 0]]; // straight through the region center
+    const ctx: GenerativeContext = { ...CTX, roadCenterlines: [road] };
+    const d = expandDistrict(district(), ctx, { ...OPTS, roadBufferM: 15 });
+    const centroidOf = new Map(d.lots.map((l) => [l.id, l.centroid]));
+    for (const m of d.massing) {
+      const c = centroidOf.get(m.lotId)!;
+      expect(Math.abs(c[1])).toBeGreaterThanOrEqual(15 - 1e-6); // clear of the n=0 road line
+    }
+    expect(d.massing.length).toBeGreaterThan(0);
+  });
+});

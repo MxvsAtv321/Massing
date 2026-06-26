@@ -19,6 +19,7 @@ import { subdivideBlock, type Lot } from "./lots";
 import { buildGradientField, sampleGradient } from "./gradient";
 import { massLot, type MassingPlacement } from "./massing";
 import { computeFill, requestedUnits, ringArea } from "./fill";
+import { pointToSegmentDistSq } from "./placement";
 import type { GeneratedDistrict, GenerativeContext, FillResult } from "./types";
 import type {
   ApplyGradientOp,
@@ -38,6 +39,7 @@ export type ExpandOpts = {
   maxLotSizeM?: number; // default 50
   lotJitterFrac?: number; // default 0.2
   snapRadiusM?: number; // default 60
+  roadBufferM?: number; // default 10, keep generated buildings this far off real road centerlines
 };
 
 export type ExpandedDistrict = {
@@ -63,6 +65,7 @@ export class ExpandError extends Error {
 const DEFAULT_MAX_LOT = 50;
 const DEFAULT_JITTER = 0.2;
 const DEFAULT_SNAP = 60;
+const DEFAULT_ROAD_BUFFER = 10;
 
 export function expandDistrict(
   district: GeneratedDistrict,
@@ -95,8 +98,13 @@ export function expandDistrict(
   if (fillOp) {
     const maxLot = opts.maxLotSizeM ?? DEFAULT_MAX_LOT;
     const jitter = opts.lotJitterFrac ?? DEFAULT_JITTER;
+    const roads = ctx.roadCenterlines ?? [];
+    const bufferSq = (opts.roadBufferM ?? DEFAULT_ROAD_BUFFER) ** 2;
     for (const blk of buildBlocks) {
       for (const lot of subdivideBlock(grid, blk, { maxLotSizeM: maxLot, jitterFrac: jitter }, rng)) {
+        // Street-aware generation (ADR-R18): drop lots that fall on the real road right-of-way, so
+        // the proposal respects the streets running through the region instead of building on them.
+        if (roads.length > 0 && minDistSqToRoads(lot.centroid, roads) < bufferSq) continue;
         lots.push(lot);
       }
     }
@@ -236,6 +244,18 @@ function d2(a: [number, number], b: [number, number]): number {
   const de = a[0] - b[0];
   const dn = a[1] - b[1];
   return de * de + dn * dn;
+}
+
+// Squared distance from a point to the nearest real road centerline, for the street-aware mask.
+function minDistSqToRoads(p: [number, number], roads: [number, number][][]): number {
+  let best = Infinity;
+  for (const path of roads) {
+    for (let i = 0; i + 1 < path.length; i++) {
+      const dd = pointToSegmentDistSq(p, path[i], path[i + 1]);
+      if (dd < best) best = dd;
+    }
+  }
+  return best;
 }
 
 function uniqueStreets(g: StitchGraph): [number, number][][] {

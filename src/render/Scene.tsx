@@ -92,6 +92,10 @@ export function Scene({ payload }: { payload: CityPayload }) {
     return rec;
   }, [clusterCentroids]);
 
+  const roadCenterlines = useMemo(
+    () => payload.streets.map((s) => s.path),
+    [payload.streets]
+  );
   const genContext: GenerativeContext = useMemo(
     () => ({
       namedRegions: {},
@@ -99,11 +103,12 @@ export function Scene({ payload }: { payload: CityPayload }) {
       districtBoundaries: {},
       clusterCentroids: clusterCentroidsEnu,
       realBoundaryNodes: [],
+      roadCenterlines,
     }),
-    [clusterCentroidsEnu]
+    [clusterCentroidsEnu, roadCenterlines]
   );
   const genOpts = useMemo(
-    () => ({ metresPerStorey: payload.metresPerStorey, snapRadiusM: 60 }),
+    () => ({ metresPerStorey: payload.metresPerStorey, snapRadiusM: 60, roadBufferM: 14 }),
     [payload.metresPerStorey]
   );
 

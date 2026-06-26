@@ -45,4 +45,5 @@ export type GeneratedDistrict = {
 export type GenerativeContext = RefContext & {
   clusterCentroids: Record<string, [number, number]>; // cluster id -> ENU [east, north]
   realBoundaryNodes?: RealBoundaryNode[]; // real nodes the generated grid connects to
+  roadCenterlines?: [number, number][][]; // real street polylines; the generator keeps buildings off them
 };
