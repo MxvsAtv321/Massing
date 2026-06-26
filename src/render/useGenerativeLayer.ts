@@ -30,7 +30,18 @@ export function useGenerativeLayer(): GenerativeLayer {
   const applyDirective = useCallback(
     (ops: GenerativeOp[], ctx: GenerativeContext, opts: ExpandOpts) => {
       const overlay = applyGenerativeOps(emptyOverlay(), ops, ctx);
-      setExpanded(overlay.generatedDistricts.map((d) => expandDistrict(d, ctx, opts)));
+      // A district with only a DefineDistrict (the agent's first streamed op) cannot expand yet, the
+      // expander needs a LayStreets. Skip those rather than throw, so the live build comes up cleanly
+      // op by op (clear, then streets, then towers) as the rest of the ops arrive.
+      const next: ExpandedDistrict[] = [];
+      for (const d of overlay.generatedDistricts) {
+        try {
+          next.push(expandDistrict(d, ctx, opts));
+        } catch {
+          // not expandable yet (no streets); render nothing for it this step
+        }
+      }
+      setExpanded(next);
       setCleared(new Set(overlay.removedClusterIds));
     },
     []
