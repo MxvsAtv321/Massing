@@ -900,6 +900,43 @@ determinism test (the divergence that matters is node versus browser, which a no
 Trusting the stitch by construction without a connectivity check (the exact class of bug, a near-miss
 snap that leaves a disconnected component, that construction confidence misses).
 
+## ADR-R24: The generator is street-aware via a road-buffer mask; exact block derivation is deferred
+
+Status: Accepted
+Date: 2026-06-26
+
+Context: G2 placed a generated block by filling a fixed rectangle over real ground, and on device it sat
+on a road. The procedural layer had no knowledge of the real street network, so it cleared the buildings
+and treated the whole rectangle, including the road right-of-way, as buildable. A proposal that builds on
+the streets reads as broken and dissolves the grounding the moat depends on.
+
+Decision: the expander is street-aware. The real street centerlines are passed in the generative context,
+and the expander drops any lot whose centroid falls within a road buffer (default 10 m, 14 m for the G2
+directive), so generated buildings never occupy the real road right-of-way. The mask is deterministic
+(the roads are fixed input), so it stays inside the determinism gate (ADR-R23). The hard-coded G2
+directive also lands on the real building cluster nearest the target and orients its grid to the bearing
+of the nearest real street, so the block replaces a real parcel aligned to the grid instead of floating in
+an intersection. Confirmed on device: the proposal sits on a real block, set back from the streets, the
+sun study reads on it (4.1 h of 9.0 h, 75% sunlit for the sample), and the draw count stays flat, so the
+ADR-R18 instancing holds (the proposal is a couple of draws, not one per building).
+
+The exact form, deriving real block polygons as faces of the planar graph of the street network and
+filling those, is deferred. The buffer mask is the right level for the single-block milestone and is the
+same mask the agent's districts will use; planar face extraction is the later upgrade for when generation
+spans many blocks and the fit must be exact rather than a setback.
+
+Consequences: the generator respects the real streets by construction, which is the grounding the moat
+depends on, and the achieved-units count stays honest because lots on roads are removed from the scored
+massing, not merely hidden. The buffer is one tunable number, and a coarse lot grain against a large
+buffer can over-drop lots in a small block, so the directive uses a finer setback than the default. The
+deferred planar-face derivation is the dependency to revisit as districts grow (G3 onward).
+
+Alternatives rejected: filling the rectangle and ignoring roads (builds on the streets, the bug this
+fixes). Planar block-face derivation now (correct and exact, but graph work not needed to prove the
+single-block milestone). A purely visual post-clip that hides on-road geometry without removing it from
+the scored massing (the achieved-units count would then include buildings that are not really there,
+breaking the measured-consequence honesty).
+
 ---
 
 # Original decisions (001 to 010) and their disposition under the rebuild
