@@ -894,6 +894,19 @@ record rather than assumed: the gate proves V8-to-V8 and by-construction transce
 and JavaScriptCore parity is unverified until a real-browser determinism slice (a Playwright or WebKit
 pass) is added, which is the right home for it at G5 where the server scores and the client renders.
 
+Update (G5, 2026-06-27), the real-browser slice that G1b promised: the agent loop now carries the gate
+live. The server emits the geometry signature of the district it scored (sandbox.signatureAll), the
+client re-expands the same streamed ops and computes its own signature, and the AgentPanel compares them
+(src/render/agentClient.ts). On device, a converged 8,000-resident run reported signature MATCH: the city
+the browser rendered is bit-identical to the city the server scored, so the cross-process node-to-browser
+gap is verified empirically, not assumed, on the demo engine. Precise scope, kept honest: the demo
+browser here is Chromium (V8), so this verifies node-V8 server to browser-V8 client across two separate
+builds and module instances (a real gap, since they bundle and run the expander independently), and it
+confirms the by-construction transcendental avoidance survives that boundary. It does NOT yet exercise
+JavaScriptCore: a Safari run is the one remaining check, and because the signature comparison ships in the
+loop, it now runs automatically there too, so the JSC result will surface the first time the demo opens in
+Safari rather than needing a separate harness.
+
 Alternatives rejected: leaving both as section 20 risks (they fail silently, so a risk note does not
 catch them; ADR-R08's precedent is that load-bearing falsifiable claims become gates). A node-only
 determinism test (the divergence that matters is node versus browser, which a node-only test cannot see).
