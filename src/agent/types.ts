@@ -1,4 +1,5 @@
 import type { GenerativeOp } from "../generate/op";
+import type { VectorEvaluation } from "./objective";
 
 // The agent loop's type surface (G5). The loop is generic over Agent so the entire read-score-refine-
 // stream machinery runs headless with a scripted agent (no LLM, no key, no cost); the route injects
@@ -32,6 +33,14 @@ export type StreamEvent =
   | { type: "status"; text: string }
   | { type: "op"; op: GenerativeOp }
   | { type: "score"; tool: string; score: unknown }
-  | { type: "done"; ops: GenerativeOp[]; signature: string; converged: boolean; reason: string };
+  | { type: "objectives"; evaluation: VectorEvaluation }
+  | {
+      type: "done";
+      ops: GenerativeOp[];
+      signature: string;
+      converged: boolean;
+      reason: string;
+      evaluation?: VectorEvaluation;
+    };
 
 export type Emit = (e: StreamEvent) => void;
