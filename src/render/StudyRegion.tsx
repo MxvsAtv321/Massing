@@ -31,6 +31,9 @@ export function StudyRegion() {
   const proxy = useMemo(() => new THREE.Object3D(), []);
   const dragging = useRef(false);
   const [mode, setMode] = useState<Mode>("translate");
+  // The manipulation gizmo is opt-in (key "r"): hidden by default so it stays out of the cinematic
+  // shot, the heatmap and the cyan border always show, only the transform handle is gated.
+  const [showGizmo, setShowGizmo] = useState(false);
 
   // The sun-hours heatmap: bake the field into a DataTexture and sample it on a plane
   // under the border. Rebuilt only when a study finishes (not per frame), so the
@@ -90,12 +93,13 @@ export function StudyRegion() {
     proxy.updateMatrixWorld();
   }, [proxy, region]);
 
-  // 1 move, 2 resize, 3 rotate. Mirrors a standard editor transform toolset.
+  // 1 move, 2 resize, 3 rotate (when the gizmo is shown); r toggles the gizmo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "1") setMode("translate");
       else if (e.key === "2") setMode("scale");
       else if (e.key === "3") setMode("rotate");
+      else if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey) setShowGizmo((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -162,18 +166,20 @@ export function StudyRegion() {
           <planeGeometry args={[2, 2]} />
         </mesh>
       </primitive>
-      <TransformControls
-        object={proxy}
-        mode={mode}
-        showX={mode !== "rotate"}
-        showY={mode === "rotate"}
-        showZ={mode !== "rotate"}
-        onObjectChange={onObjectChange}
-        onMouseDown={() => {
-          dragging.current = true;
-        }}
-        onMouseUp={onMouseUp}
-      />
+      {showGizmo && (
+        <TransformControls
+          object={proxy}
+          mode={mode}
+          showX={mode !== "rotate"}
+          showY={mode === "rotate"}
+          showZ={mode !== "rotate"}
+          onObjectChange={onObjectChange}
+          onMouseDown={() => {
+            dragging.current = true;
+          }}
+          onMouseUp={onMouseUp}
+        />
+      )}
     </>
   );
 }
