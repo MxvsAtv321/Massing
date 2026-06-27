@@ -1024,3 +1024,59 @@ are now first-class build gates (ADR-R23), not just risks, because they fail sil
   by framing and by the measured consequences, which is a UI and product-copy responsibility, not a
   rendering one, and is easy to forget until the proposal is indistinguishable from Toronto and
   nothing says so.
+
+## 21. The multi-city build sequence (the I-series)
+
+The G-series proved the solver on one hand-built neighborhood. The I-series makes the city a slot, not a
+constant, so the same engine, expander, scorers, and agent run on any ingested neighborhood. The product
+is a search over unsearched design space: the ops are the space, the measured consequences are the
+evaluation function, the agent is the optimizer. A solver that only works on Toronto is a demo of a
+solver; a solver that works on any neighborhood is the product.
+
+The audit (recorded in ADR-R25) found the Toronto-specific surface separates cleanly: the ENU transform,
+the loader mechanism, the expander, the scorers, and the solar engine are general; the time zone and the
+manifest values are per-city parameters; and the gates resting on hand-curated ground truth (verify:heights
+entirely, the route and alignment half of verify:network, the cordon placement, the count fit) do not
+transfer. The trust strategy is the trichotomy: sun reduces to a coordinate-and-geometry-correctness gate
+because the physics is universal, connectivity and reachability and traffic gate structurally on any city,
+and heights cannot be verified without an oracle so they are labeled, not gated.
+
+Confidence is a first-class per-consequence output (ADR-R26), propagated to the inputs that drove each
+consequence, never the city aggregate. Sun carries a shadow ledger: the raymarch attributes each lost
+sun-hour to its occluder and carries that occluder's height confidence, so a park shadowed by estimated
+towers reads low confidence even on a mostly-measured city. Generated population is high confidence because
+it is the proposal's own greenfield geometry (scoped to clear-and-generate, never inherited by a future
+retain-existing mode). Reachability and traffic are height-independent and carry structural and coverage
+confidence, including the dominant-component scoping when a catchment splits. We build toward open
+unattended onboarding (ADR-R27), so the confidence model is the safety layer and is cannot-ship-without.
+
+The units, smallest shippable, each with its gate:
+
+- I0: parameterize the time zone into the manifest (ianaZone). Gate: Toronto unchanged, all green. Done.
+- I1: the canonical data/cities/<city>/ layout and extended manifest; move Toronto in as the first
+  canonical city. Gate: Toronto loads from the new layout, all tests and gates green.
+- I2: extract the automatic structural gate suite (coordinate and geometry equals sun soundness, network
+  structural equals reach and traffic soundness) from the Toronto ground-truth gates. Gate: Toronto passes
+  the automatic suite with no ground truth consulted.
+- I3: the confidence layer, the per-occluder confidence field and shadow attribution in the sun raymarch,
+  the reach coverage caveat, the traffic demand caveat, all surfaced to the agent and the UI; population
+  scoped to greenfield. Gate: Toronto reads high sun confidence, and a synthetic low-confidence occluder
+  injected into a test produces low confidence on the affected region.
+- I4: the ingestion pipeline, bbox to OSM roads plus footprints plus tiered heights to a canonical
+  snapshot. Gate: produces a valid snapshot for the second city.
+- I5: cordon auto-derivation from boundary-crossing edges. Gate: auto-cordon on Toronto reproduces a valid
+  structural demand gate.
+- I6: NYC clean proof, ingest, render, assemble, all four consequences, structural gates pass, per-city
+  signature matches, confidence reads high. Geometry generalizes.
+- I7: the binding confidence diagnostic, the same NYC geometry with measured versus forced building:levels
+  heights. Gate: confidence flips high to low while the sun value barely moves. The model is proven to key
+  on provenance, and this gate binds before the thin-data city.
+- I8: the thin-data city (central Mexico City), two phases, one variable at a time: first it gates cleanly
+  on geometry, network, and signature; then a park shadowed by guessed towers reads low sun confidence,
+  visibly, and shapes the agent's trust.
+
+The milestone is two cities end to end: NYC for the clean geometric proof and the thin-data neighborhood as
+the real test of the trust strategy, with the binding diagnostic between them. NYC alone proves the
+pipeline generalizes the geometry and nothing about trust, because the trust strategy only does work when
+the data is bad, so the thin city is the test, not the victory lap. Then the path to many: open unattended
+onboarding, batch ingestion, and a city registry.
