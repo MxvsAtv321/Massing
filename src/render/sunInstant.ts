@@ -1,5 +1,5 @@
 import { computeSunDir } from "../solar/sun";
-import { toTorontoUtc, toTorontoUtcMinutes } from "../solar/time";
+import { toZonedUtc, toZonedUtcMinutes } from "../solar/time";
 
 // The art-directed golden-hour instant used as the clock's opening position
 // (Unit 1 look). Time of day is live from Unit 3 on.
@@ -18,15 +18,16 @@ export type SunInstant = {
 export function sunAtMinutes(
   originLatLon: [number, number],
   isoDate: string,
-  minutesOfDay: number
+  minutesOfDay: number,
+  zone: string
 ): SunInstant {
-  const utc = toTorontoUtcMinutes(isoDate, minutesOfDay);
+  const utc = toZonedUtcMinutes(isoDate, minutesOfDay, zone);
   return fromUtc(utc, originLatLon);
 }
 
 // The fixed golden-hour sun, kept for the opening framing and any static use.
-export function goldenHourSun(originLatLon: [number, number]): SunInstant {
-  const utc = toTorontoUtc(GOLDEN_HOUR.date, GOLDEN_HOUR.hour, GOLDEN_HOUR.minute);
+export function goldenHourSun(originLatLon: [number, number], zone: string): SunInstant {
+  const utc = toZonedUtc(GOLDEN_HOUR.date, GOLDEN_HOUR.hour, GOLDEN_HOUR.minute, zone);
   return fromUtc(utc, originLatLon);
 }
 

@@ -39,6 +39,7 @@ export type CityPayload = {
   realGraph: RealGraph; // real road nodes + edges the generated grid stitches to (G4 reachability)
   originLatLon: [number, number]; // stored [lon, lat] (loader convention)
   metresPerStorey: number;
+  ianaZone: string; // per-city IANA zone for the solar clock (I0)
 };
 
 export type ModelBounds = {

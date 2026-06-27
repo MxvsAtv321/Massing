@@ -3,9 +3,10 @@ import { goldenHourSun } from "../src/render/sunInstant";
 
 // St. Lawrence origin, stored [lon, lat] per the loader convention.
 const ORIGIN: [number, number] = [-79.371, 43.649];
+const TZ = "America/Toronto";
 
 describe("goldenHourSun", () => {
-  const sun = goldenHourSun(ORIGIN);
+  const sun = goldenHourSun(ORIGIN, TZ);
 
   it("returns a unit vector above the horizon", () => {
     const [x, y, z] = sun.dir;

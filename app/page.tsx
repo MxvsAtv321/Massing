@@ -170,6 +170,7 @@ export default async function Page() {
         realGraph,
         originLatLon: model.originLatLon,
         metresPerStorey: model.sources.metresPerStorey,
+        ianaZone: model.sources.ianaZone,
       }}
     />
   );

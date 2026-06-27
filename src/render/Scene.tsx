@@ -262,7 +262,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Warm distance haze blends the slice and the surrounding context into the
           horizon instead of ending at a hard ground edge. */}
       <fogExp2 attach="fog" args={["#241a14", 0.18 / Math.max(bounds.radius, 1)]} />
-      <Lighting originLatLon={payload.originLatLon} bounds={bounds} />
+      <Lighting originLatLon={payload.originLatLon} ianaZone={payload.ianaZone} bounds={bounds} />
       <Ground radius={bounds.radius} />
       <Streets segments={payload.streets} flow={flowEngine} />
       {/* Living traffic: glowing capsules advected on the directed graph at the
@@ -302,6 +302,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
         generatedMassing={gen.massing}
         bounds={bounds}
         originLatLon={payload.originLatLon}
+        ianaZone={payload.ianaZone}
       />
       {/* makeDefault so the height gizmo can suspend orbiting while dragging. */}
       <OrbitControls

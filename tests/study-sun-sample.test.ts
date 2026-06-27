@@ -10,10 +10,11 @@ import { sunAtMinutes } from "../src/render/sunInstant";
 
 // St. Lawrence, Toronto, stored [lon, lat] per the loader convention.
 const ORIGIN: [number, number] = [-79.37, 43.65];
+const TZ = "America/Toronto";
 
 describe("buildSamples with the real sun", () => {
   const realSun: SunProvider = (isoDate, min) => {
-    const s = sunAtMinutes(ORIGIN, isoDate, min);
+    const s = sunAtMinutes(ORIGIN, isoDate, min, TZ);
     return { altitude: s.altitude, azimuth: s.azimuth, dir: s.dir };
   };
 

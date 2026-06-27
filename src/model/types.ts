@@ -54,6 +54,7 @@ export type SourceManifest = {
   heightAccuracyBySource: Record<string, HeightAccuracyEntry>;
   defaultHeightAccuracy: HeightAccuracyEntry;
   metresPerStorey: number;
+  ianaZone: string; // per-city IANA time zone for the solar clock, e.g. "America/Toronto"
   bandScopeNote: string;
 };
 

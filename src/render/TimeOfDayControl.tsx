@@ -2,7 +2,7 @@
 
 import { dayClock, useDayClock } from "./dayClockStore";
 import { studyState, useStudyState } from "./studyStore";
-import { toTorontoUtcMinutes, formatTorontoTime } from "../solar/time";
+import { toZonedUtcMinutes, formatZonedTime } from "../solar/time";
 import { MINUTES_PER_DAY } from "./dayClock";
 
 // How long a full day takes in real seconds -> sim minutes per real second.
@@ -25,10 +25,10 @@ const DATES = [
 // DOM overlay to scrub and play the time of day. Dev-grade for now; folds into
 // the real HUD when the editor UI lands. Lives outside the canvas and talks to
 // the same clock the canvas advances (dayClockStore).
-export function TimeOfDayControl() {
+export function TimeOfDayControl({ zone }: { zone: string }) {
   const { minutes, playing, speed } = useDayClock();
   const { date } = useStudyState();
-  const label = formatTorontoTime(toTorontoUtcMinutes(date, minutes));
+  const label = formatZonedTime(toZonedUtcMinutes(date, minutes, zone), zone);
 
   return (
     <div

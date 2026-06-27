@@ -31,7 +31,7 @@ export default function Viewport({ payload }: { payload: CityPayload }) {
         <BackendReporter onResolved={setBackend} />
       </Canvas>
       <BackendBadge backend={backend} />
-      <TimeOfDayControl />
+      <TimeOfDayControl zone={payload.ianaZone} />
       <SelectionPanel />
       <StudyPanel />
       <AgentPanel />

@@ -36,6 +36,9 @@ function assertManifest(manifest: SourceManifest): void {
   if (!manifest.heightField) {
     throw new Error("Manifest missing required field: heightField");
   }
+  if (!manifest.ianaZone) {
+    throw new Error("Manifest missing required field: ianaZone");
+  }
   if (!manifest.defaultHeightAccuracy) {
     throw new Error("Manifest missing required field: defaultHeightAccuracy");
   }

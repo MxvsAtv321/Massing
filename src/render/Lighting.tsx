@@ -35,9 +35,11 @@ const SKY_MIN_MS = 90; // minimum gap between regenerations
 // arrive in Unit 3b; here a single shadow camera is re-aimed down the sun.
 export function Lighting({
   originLatLon,
+  ianaZone,
   bounds,
 }: {
   originLatLon: [number, number];
+  ianaZone: string;
   bounds: ModelBounds;
 }) {
   const gl = useThree((s) => s.gl) as unknown as THREE.WebGPURenderer;
@@ -115,7 +117,7 @@ export function Lighting({
 
   useFrame((_, delta) => {
     const minutes = dayClock.tick(delta);
-    const sun = sunAtMinutes(originLatLon, studyState.getDate(), minutes);
+    const sun = sunAtMinutes(originLatLon, studyState.getDate(), minutes, ianaZone);
     const grade = daylightFor(sun.altitude);
     const skyGrade = skyGradeFor(sun.altitude);
     // Publish the live day factor so traffic (and later window lights) can ramp

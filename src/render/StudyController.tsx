@@ -41,11 +41,13 @@ export function StudyController({
   generatedMassing,
   bounds,
   originLatLon,
+  ianaZone,
 }: {
   buildings: BuildingForScene[];
   generatedMassing: MassingPlacement[];
   bounds: ModelBounds;
   originLatLon: [number, number];
+  ianaZone: string;
 }) {
   const spec = useMemo(
     () => heightfieldSpecForBounds(bounds.center, bounds.radius, CELL_M),
@@ -94,7 +96,7 @@ export function StudyController({
 
   useEffect(() => {
     const sun: SunProvider = (isoDate, min) => {
-      const s = sunAtMinutes(originLatLon, isoDate, min);
+      const s = sunAtMinutes(originLatLon, isoDate, min, ianaZone);
       return { altitude: s.altitude, azimuth: s.azimuth, dir: s.dir };
     };
 
@@ -184,7 +186,7 @@ export function StudyController({
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [hfBuildings, spec, originLatLon]);
+  }, [hfBuildings, spec, originLatLon, ianaZone]);
 
   // Re-run on a committed edit: the edit store bumps version on every change, so wait
   // until the drag has ended (the commit) before recomputing, and skip the mount frame.

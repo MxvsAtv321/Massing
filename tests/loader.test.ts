@@ -25,6 +25,7 @@ const BASE_MANIFEST: SourceManifest = {
   },
   defaultHeightAccuracy: { kind: "estimated", sigma_m: 5.0 },
   metresPerStorey: 3.0,
+  ianaZone: "America/Toronto",
   bandScopeNote: "",
 };
 

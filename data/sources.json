@@ -34,6 +34,7 @@
     "note": "Conservative sigma for features where HEIGHT_SRC is null, '3D Model', 'Photogrammetrics', 'Oblique Aerials', or any unlisted source. Set equal to the Site Plan sigma (the less accurate of the two documented categories) because unknown-source features may have been derived from design drawings, photogrammetric workflows of varying vintage, or manual digitising. Does not apply to Lidar-Derived features, which use sigma_m=0.10 m."
   },
   "metresPerStorey": 3.0,
+  "ianaZone": "America/Toronto",
   "bandScopeNote": "v1 band is height-only; footprint geometry error, horizontal position error, and building fragmentation (podium vs. tower polygon splitting) are excluded from the uncertainty band and are listed in the do-NOT-measure list.",
   "_sigmaDerivationNotes": {
     "LiDAR_basis": "Anchored on observed building-height error (88 Scott: 0.5 m), not the 0.10 m bare-ground RMSEz. Rooftop returns degrade to 0.2-0.3 m; AVG_HEIGHT is footprint-averaged. sigma_m=0.5 m as a defensible floor; n=1, raise with more observations.",
