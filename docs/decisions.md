@@ -952,6 +952,117 @@ breaking the measured-consequence honesty).
 
 ---
 
+## ADR-R25: New-city gates are structural and analytic, not ground-truth; a structural pass is not a correctness pass
+
+Status: Accepted
+Date: 2026-06-27
+
+Context: Toronto's verify gates rest on hand-curated ground truth (known-heights.json CTBUH towers,
+known-routes.json measured distances, the placed cordon, the count stations). Those do not transfer to a
+city we did not hand-check. The multi-city audit found the gates split cleanly: the structural and
+analytic halves transfer, the ground-truth halves do not, and the ground-truth dependency concentrates
+almost entirely in heights.
+
+Decision: the per-city acceptance gate is structural and analytic only. The trichotomy: sun reduces to a
+coordinate-and-geometry-correctness gate because the physics is universal (astronomy-engine is correct at
+any lat/lon, the verify:solar assertions are analytic identities), so if the reprojection, the origin, and
+the zone are right, the shadow is right anywhere; connectivity, reachability, and traffic gate structurally
+on any city (single dominant SCC, a dominance threshold, zero-length and absurd-edge sanity, and the
+self-contained ENU-vs-geodesic length cross-check that recomputes geodesic length from the ENU geometry
+with no external truth); heights cannot be verified without an oracle and are not gated, they are labeled
+(ADR-R26). The Toronto ground-truth gates (verify:heights entirely, the oneway, route, and alignment half
+of verify:network, the count fit in verify:counts) are kept as a Toronto regression asset but are not part
+of the per-city acceptance gate. A structural pass is explicitly NOT a correctness pass: a city can pass
+every structural gate and still carry garbage heights, so structural soundness must never be read as
+verification.
+
+Consequences: any ingested city can be accepted automatically on structural and analytic grounds, which is
+what unattended onboarding requires (ADR-R27). The danger is mistaking a green structural gate for a
+verified city; the defense is that height confidence rides with every height-derived consequence (ADR-R26),
+so a structurally sound city with weak heights produces visibly low-confidence numbers rather than silently
+wrong ones. A legitimately split catchment is labeled, not failed, and the reachability isochrone is scoped
+to the dominant component with that scoping surfaced, because an answer computed on a graph that silently
+dropped part of the neighborhood is the confident wrong answer the project refuses.
+
+Alternatives rejected: requiring per-city ground truth before accepting a city (blocks the many-cities
+product, no oracle exists at scale). Hard-failing a split catchment (a disconnected catchment is data, not
+breakage; scope and label it). Treating the structural gate as a correctness certificate (false, and the
+exact failure mode that turns the solver into a liar).
+
+---
+
+## ADR-R26: Confidence is a first-class per-consequence output, propagated to the inputs that drove each consequence, not aggregated over the city
+
+Status: Accepted
+Date: 2026-06-27
+
+Context: heights cannot be verified without an oracle, so they are labeled. The naive label is a per-city
+aggregate, the fraction of measured versus estimated heights. That label is true about the city and useless
+about a specific consequence: a park's sun-hours depend on the specific towers that shadow it, and if those
+particular towers are the estimated-height ones, the park's sun number is garbage even though the city is
+mostly measured. Aggregate confidence averages away the thing that matters, because the agent optimizes a
+specific consequence against specific inputs, never the city mean.
+
+Decision: confidence is a first-class output attached to every consequence the simulators return, and it
+propagates to the specific inputs that drove that consequence, not the city aggregate. The drivers differ by
+consequence. Sun-hours are driven by the occluders that actually cast shadow on the region, so the raymarch
+attributes each lost sun-hour to its occluder and carries that occluder's height confidence, yielding a
+per-consequence confidence that reflects the buildings that shadowed this region (generated towers are high
+confidence, the proposal's own geometry; real towers carry their data provenance). Generated population is
+high confidence because it is the proposal's own chosen heights. Reachability and traffic are
+height-independent and carry structural and coverage confidence (the component scoping), plus the standing
+demand-assumption caveat for traffic. The agent reads this per-consequence confidence in its score results
+and the UI surfaces it, so the solver knows how much to trust its own evaluation on this city at this
+location.
+
+Consequences: the confidence is honest at the level the decision is made, not only at the level of the city.
+This is the safety layer for unattended onboarding (ADR-R27): on a thin-data city a park shadowed by
+estimated-height towers reads low-confidence and the agent and user both see it. It is more expensive than
+an aggregate, because the raymarch must attribute shadow to occluders and carry their sigma, and that cost
+is accepted because aggregate confidence is not a real safety layer. The detailed propagation design (shadow
+attribution and sensitivity for sun, and the driver set per consequence) is the hardest part of the
+multi-city unit and is specified before any code.
+
+Alternatives rejected: a per-city aggregate height confidence (looks rigorous, is not, averages away the
+drivers). A single global confidence per run (hides which consequence and which location is weak). Refusing
+to report a consequence when any input is estimated (blocks almost every real city; the honest move is to
+report with the propagated confidence, not to withhold).
+
+---
+
+## ADR-R27: Build toward open unattended onboarding; curated-first is a release strategy, so consequence-level confidence is cannot-ship-without
+
+Status: Accepted
+Date: 2026-06-27
+
+Context: onboarding cities we select and curate is a different product from letting a user type any bounding
+box and run the pipeline unattended. Curated is honest but slow and cannot let a user bring their own
+parcel; open is the many-neighborhoods product and is dramatically harder, because no human is in the loop
+to catch the messy-data failures the structural gate does not. The choice sets the standard the trust layer
+must meet.
+
+Decision: build the architecture and the trust layer toward open, unattended onboarding, and treat
+curated-first as a release and go-to-market strategy, not an architecture decision. Because the destination
+is open, the consequence-level confidence model (ADR-R26) is the entire safety layer between a user and a
+confidently wrong answer on a city nobody vetted, which raises it from should-have to cannot-ship-without.
+The structural gates and the confidence propagation are designed assuming no human in the loop from the
+start, so flipping from curated to open is a release decision, not a rebuild. The milestone is pointed at
+the open future: it includes a deliberately thin-data neighborhood as the unattended-ingestion stress test,
+the case where only the confidence model protects the user.
+
+Consequences: the trust layer is held to the unattended standard now, which is more work than curated would
+need, and that work is the product's safety foundation rather than polish. The thin-data city moves into the
+milestone, the test rather than the victory lap, because a confidence model that cannot make a
+building:levels city honestly say "do not trust this park's sun" fails the open standard, and we want to
+know that at the milestone, not after.
+
+Alternatives rejected: building toward curated only (slower, smaller, and a user cannot bring their own
+neighborhood, which is the actual product). Deferring the open decision until after the milestone (it sets
+the trust-layer standard, so deferring under-scopes the hardest part of the unit). Shipping open onboarding
+now (premature; the safety layer must prove itself on curated and thin-data cities first).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
