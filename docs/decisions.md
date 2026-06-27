@@ -1009,9 +1009,12 @@ consequence. Sun-hours are driven by the occluders that actually cast shadow on 
 attributes each lost sun-hour to its occluder and carries that occluder's height confidence, yielding a
 per-consequence confidence that reflects the buildings that shadowed this region (generated towers are high
 confidence, the proposal's own geometry; real towers carry their data provenance). Generated population is
-high confidence because it is the proposal's own chosen heights. Reachability and traffic are
-height-independent and carry structural and coverage confidence (the component scoping), plus the standing
-demand-assumption caveat for traffic. The agent reads this per-consequence confidence in its score results
+high confidence because it is the proposal's own chosen heights, and this claim is scoped explicitly to
+greenfield generation (the clear-and-generate overlay, ADR-R19); a future retain-existing mode that keeps
+real buildings would have those buildings' population contribution inherit their recorded height confidence,
+so the high-confidence claim must never be carried into that mode as a hidden assumption. Reachability and
+traffic are height-independent and carry structural and coverage confidence (the component scoping), plus
+the standing demand-assumption caveat for traffic. The agent reads this per-consequence confidence in its score results
 and the UI surfaces it, so the solver knows how much to trust its own evaluation on this city at this
 location.
 
