@@ -98,6 +98,15 @@ export function Scene({ payload }: { payload: CityPayload }) {
     () => payload.streets.map((s) => s.path),
     [payload.streets]
   );
+  // The waterfront anchor, derived from the model bounds the same way the server does (south edge),
+  // so the agent's step-down gradient resolves identically and the signature matches.
+  const waterEdge = useMemo<[number, number][]>(
+    () => [
+      [bounds.center[0] - bounds.radius, bounds.center[1] - bounds.radius],
+      [bounds.center[0] + bounds.radius, bounds.center[1] - bounds.radius],
+    ],
+    [bounds.center, bounds.radius]
+  );
   const genContext: GenerativeContext = useMemo(
     () => ({
       namedRegions: {},
@@ -106,8 +115,9 @@ export function Scene({ payload }: { payload: CityPayload }) {
       clusterCentroids: clusterCentroidsEnu,
       realGraph: payload.realGraph,
       roadCenterlines,
+      waterEdge,
     }),
-    [clusterCentroidsEnu, roadCenterlines, payload.realGraph]
+    [clusterCentroidsEnu, roadCenterlines, payload.realGraph, waterEdge]
   );
   const genOpts = useMemo(
     () => ({ metresPerStorey: payload.metresPerStorey, snapRadiusM: 60, roadBufferM: 14 }),
@@ -222,7 +232,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
       const region = {
         kind: "rect" as const,
         center,
-        halfExtents: [110, 110] as [number, number],
+        halfExtents: [200, 200] as [number, number],
         rotationRad,
       };
       studyState.setRegion({
@@ -230,12 +240,13 @@ export function Scene({ payload }: { payload: CityPayload }) {
         name: "Agent district",
         kind: "rect",
         center,
-        halfExtents: [130, 130],
+        halfExtents: [200, 200],
         rotationRad,
         source: "placed",
       });
       void startAgent({
-        populationTarget: 8000,
+        populationTarget: 40000,
+        reachCeiling: 5,
         placement: { region, seed: 7, bearingDeg },
         ctx: genContext,
         expandOpts: genOpts,

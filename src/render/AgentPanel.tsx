@@ -32,11 +32,20 @@ export function AgentPanel() {
     >
       <div style={{ fontWeight: 600, color: "#e8edf2", marginBottom: 6 }}>GENERATIVE AGENT</div>
       {a.populationTarget !== null && (
-        <div>target {a.populationTarget.toLocaleString()} residents</div>
+        <div>target {a.populationTarget.toLocaleString()} residents, car-free, park, stepping to water</div>
       )}
       <div style={{ marginTop: 4, color: "#aeb6bf" }}>
         {a.running ? `working: ${a.status}` : `${a.converged ? "converged" : "stopped"} (${a.reason})`}
       </div>
+      {a.evaluation && (
+        <div style={{ marginTop: 8 }}>
+          {a.evaluation.results.map((r) => (
+            <div key={r.kind} style={{ color: r.met ? "#7fd1a0" : "#d79a52" }}>
+              {r.met ? "met" : "traded"}: {r.desc}
+            </div>
+          ))}
+        </div>
+      )}
       {!a.running && a.signature && a.signature !== "unknown" && (
         <div style={{ marginTop: 8, color: sigColor, fontWeight: 600 }}>
           signature {a.signature === "match" ? "MATCH: client = server" : "MISMATCH"}

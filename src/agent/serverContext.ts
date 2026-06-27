@@ -51,6 +51,16 @@ export async function buildServerContext(): Promise<{
     edges: graph.edges.map((e) => ({ from: e.from, to: e.to, lengthMetres: e.lengthMetres })),
   };
 
+  // The waterfront anchor: a placed line at the slice's south edge for the step-down gradient to
+  // descend toward (ADR-R16 register, a designated analysis anchor, never a measured Toronto feature).
+  // Computed from the model bounds the same way the client does, so the gradient, and thus the
+  // signature, matches. THREE-free.
+  const b = boundsOf(buildings);
+  const waterEdge: [number, number][] = [
+    [b.cx - b.r, b.cy - b.r],
+    [b.cx + b.r, b.cy - b.r],
+  ];
+
   const ctx: GenerativeContext = {
     namedRegions: {},
     streets: {},
@@ -58,6 +68,7 @@ export async function buildServerContext(): Promise<{
     clusterCentroids,
     realGraph,
     roadCenterlines,
+    waterEdge,
   };
   // Must equal the client's genOpts in Scene.tsx, or the signatures will not match.
   const opts: ExpandOpts = {
@@ -67,4 +78,29 @@ export async function buildServerContext(): Promise<{
   };
 
   return { ctx, opts };
+}
+
+// Model bounds, THREE-free, the same square center and radius computeModelBounds produces, so the
+// waterEdge derived from it matches the client's.
+function boundsOf(buildings: BuildingForScene[]): { cx: number; cy: number; r: number } {
+  let minE = Infinity;
+  let minN = Infinity;
+  let maxE = -Infinity;
+  let maxN = -Infinity;
+  for (const b of buildings) {
+    for (const ring of b.footprint) {
+      for (const [e, n] of ring) {
+        if (e < minE) minE = e;
+        if (e > maxE) maxE = e;
+        if (n < minN) minN = n;
+        if (n > maxN) maxN = n;
+      }
+    }
+  }
+  if (!isFinite(minE)) return { cx: 0, cy: 0, r: 100 };
+  return {
+    cx: (minE + maxE) / 2,
+    cy: (minN + maxN) / 2,
+    r: Math.max(maxE - minE, maxN - minN) / 2 || 100,
+  };
 }

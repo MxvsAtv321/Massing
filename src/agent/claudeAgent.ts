@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { Agent, AgentTurn, ToolCall, ToolResult, Placement } from "./types";
+import type { Objective } from "./objective";
 
 // The real-Claude implementation of the Agent interface (G5b). It keeps its own Anthropic message
 // history; the loop drives it the same way it drives the scripted agent. The agent never emits a
@@ -20,19 +21,23 @@ export function buildTools(): Anthropic.Tool[] {
     {
       name: "apply_op",
       description:
-        "Apply one generative op to the district. You never give coordinates: the site, seed, and " +
-        "street orientation are handled for you. DefineDistrict claims the site. LayStreets lays the " +
-        "grid. FillBlocks fills it with buildings and is how you control population, through the " +
-        "density (target.unitsPerHa) and the height (heightEnvelope).",
+        "Apply one generative op. You never give coordinates: the site, seed, street orientation, and " +
+        "the waterfront line are handled for you. DefineDistrict claims the site. LayStreets lays the " +
+        "grid (carFree true for a car-free district). FillBlocks fills with buildings and controls " +
+        "population via target.unitsPerHa and heightEnvelope. PlaceOpenSpace reserves a park. " +
+        "ApplyGradient steps heights down toward the water (field height, anchor waterEdge, direction down).",
       input_schema: {
         type: "object",
         properties: {
-          op: { type: "string", enum: ["DefineDistrict", "LayStreets", "FillBlocks"] },
+          op: {
+            type: "string",
+            enum: ["DefineDistrict", "LayStreets", "FillBlocks", "PlaceOpenSpace", "ApplyGradient"],
+          },
           district: { type: "string", description: "the district id; use 'd1'" },
-          pattern: { type: "string", enum: ["grid", "perimeter"], description: "LayStreets only" },
-          blockSizeM: { type: "number", description: "LayStreets only, 40 to 200 metres" },
-          carFree: { type: "boolean", description: "LayStreets only" },
-          program: { type: "string", enum: ["residential", "office", "mixed"], description: "FillBlocks only" },
+          pattern: { type: "string", enum: ["grid", "perimeter"], description: "LayStreets" },
+          blockSizeM: { type: "number", description: "LayStreets, 40 to 200 metres" },
+          carFree: { type: "boolean", description: "LayStreets; true for a car-free district" },
+          program: { type: "string", enum: ["residential", "office", "mixed"], description: "FillBlocks" },
           target: {
             type: "object",
             properties: { unitsPerHa: { type: "number" } },
@@ -41,9 +46,16 @@ export function buildTools(): Anthropic.Tool[] {
           heightEnvelope: {
             type: "object",
             properties: { minStoreys: { type: "integer" }, maxStoreys: { type: "integer" } },
-            description: "FillBlocks: storey range 1 to 120. Set min equal to max for a uniform height.",
+            description: "FillBlocks: storey range 1 to 120.",
           },
           coverage: { type: "number", description: "FillBlocks: lot coverage 0.1 to 0.9" },
+          where: { type: "string", enum: ["central", "waterEdge", "parkCentroid"], description: "PlaceOpenSpace location" },
+          areaM2: { type: "number", description: "PlaceOpenSpace park area in m2, at least 500" },
+          field: { type: "string", enum: ["height", "density"], description: "ApplyGradient" },
+          anchor: { type: "string", enum: ["waterEdge", "parkCentroid"], description: "ApplyGradient anchor" },
+          falloffM: { type: "number", description: "ApplyGradient falloff 50 to 2000 metres" },
+          falloffShape: { type: "string", enum: ["linear", "smooth"], description: "ApplyGradient; smooth for a graceful descent" },
+          direction: { type: "string", enum: ["down", "up"], description: "ApplyGradient; down lowers toward the anchor" },
         },
         required: ["op", "district"],
       },
@@ -58,6 +70,15 @@ export function buildTools(): Anthropic.Tool[] {
       },
     },
     {
+      name: "score_reach",
+      description: "Read how reachable the park is on foot for the district's homes: the fraction within the walk-time and the worst-case minutes. Geometry-derived.",
+      input_schema: {
+        type: "object",
+        properties: { districtId: { type: "string" } },
+        required: ["districtId"],
+      },
+    },
+    {
       name: "finish",
       description: "Signal that the district is within tolerance of the population target and you are done.",
       input_schema: { type: "object", properties: {} },
@@ -65,26 +86,41 @@ export function buildTools(): Anthropic.Tool[] {
   ];
 }
 
-export function buildSystemPrompt(populationTarget: number): string {
-  return [
-    "You are a city planner building one residential district to a population target. You design",
-    "through generative ops and never specify coordinates: the location, seed, and street orientation",
-    "are handled for you.",
+export function buildSystemPrompt(vector: Objective[]): string {
+  const pop = vector.find((o) => o.kind === "population");
+  const reach = vector.find((o) => o.kind === "parkReachMinutes");
+  const lines = [
+    "You are a city planner conjuring one new district on real Toronto parcels. You design through",
+    "generative ops and never give coordinates: the site, seed, street orientation, and the waterfront",
+    "line are handled for you.",
     "",
-    `Goal: about ${populationTarget} residents.`,
+    "The brief:",
+  ];
+  if (pop && pop.kind === "population") lines.push(`- about ${pop.target} residents`);
+  if (reach && reach.kind === "parkReachMinutes")
+    lines.push(`- a park reachable within a ${reach.ceiling} minute walk for the homes`);
+  lines.push(
+    "- car-free streets",
+    "- towers stepping down toward the water",
     "",
-    "Build in this order, each through apply_op:",
-    '1. DefineDistrict (district "d1").',
-    '2. LayStreets (district "d1", pattern "grid", carFree true, blockSizeM about 80).',
-    '3. FillBlocks (district "d1", program "residential", a target.unitsPerHa, a heightEnvelope, coverage about 0.45).',
+    "Build with apply_op in this order:",
+    '1. DefineDistrict ("d1").',
+    '2. LayStreets ("d1", pattern "grid", carFree true).',
+    '3. FillBlocks ("d1", residential, a target.unitsPerHa and heightEnvelope sized to the population).',
+    '4. PlaceOpenSpace ("d1", where "central") for the park.',
+    '5. ApplyGradient ("d1", field "height", anchor "waterEdge", direction "down", falloffShape "smooth").',
     "",
-    'Then call score_units (districtId "d1") to read the achieved population. If it is below the target,',
-    "raise the density (unitsPerHa) or the height (heightEnvelope storeys) and apply FillBlocks again; if",
-    "it is above, lower them. Population rises with both density and height.",
+    'After building, read score_units (population) and score_reach (the walk to the park, districtId "d1").',
+    "Adjust to meet the brief: raise density or height for more people; the park's size and central",
+    "placement drive reachability. You will be told when all objectives are met.",
     "",
-    "Call finish as soon as the population is within about 5 percent of the target. Be decisive: do not",
-    "keep adjusting once you are close.",
-  ].join("\n");
+    "These objectives are in genuine tension: more people means taller, denser blocks. If you cannot",
+    "meet them all at once, find the best balance you can and call finish, and in your final message",
+    "state plainly which you met and which you traded and by how much (for example: 'forty thousand",
+    "would have pushed the park past a five minute walk, so I held at thirty-four thousand to keep it",
+    "reachable'). Be decisive: do not keep adjusting once you are close or have found the best balance.",
+  );
+  return lines.join("\n");
 }
 
 export class ClaudeAgent implements Agent {

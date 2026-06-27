@@ -6,6 +6,7 @@ import { expandDistrict, geometrySignature, type ExpandOpts } from "../generate/
 import { GenerativeOpSchema, type GenerativeOp } from "../generate/op";
 import type { GenerativeContext } from "../generate/types";
 import type { Placement } from "../agent/types";
+import type { VectorEvaluation } from "../agent/objective";
 import { agentState } from "./agentStore";
 
 // Drive a generative agent run from the client: POST the goal, consume the SSE stream, feed each
@@ -15,6 +16,7 @@ import { agentState } from "./agentStore";
 
 export type StartAgentArgs = {
   populationTarget: number;
+  reachCeiling: number;
   placement: Placement;
   ctx: GenerativeContext;
   expandOpts: ExpandOpts;
@@ -22,13 +24,14 @@ export type StartAgentArgs = {
 };
 
 export async function startAgent(args: StartAgentArgs): Promise<void> {
-  const { populationTarget, placement, ctx, expandOpts, onOps } = args;
+  const { populationTarget, reachCeiling, placement, ctx, expandOpts, onOps } = args;
   agentState.start(populationTarget);
 
   const accumulated: GenerativeOp[] = [];
   let serverSignature = "";
   let reason = "ended";
   let converged = false;
+  let evaluation: VectorEvaluation | null = null;
 
   let resp: Response;
   try {
@@ -37,6 +40,7 @@ export async function startAgent(args: StartAgentArgs): Promise<void> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         populationTarget,
+        reachCeiling,
         region: placement.region,
         seed: placement.seed,
         bearingDeg: placement.bearingDeg,
@@ -44,12 +48,12 @@ export async function startAgent(args: StartAgentArgs): Promise<void> {
     });
   } catch {
     agentState.setStatus("network error");
-    agentState.finish({ reason: "error", converged: false, serverSignature: "", clientSignature: "" });
+    agentState.finish({ reason: "error", converged: false, serverSignature: "", clientSignature: "", evaluation: null });
     return;
   }
   if (!resp.ok || !resp.body) {
     agentState.setStatus(`error ${resp.status}`);
-    agentState.finish({ reason: "error", converged: false, serverSignature: "", clientSignature: "" });
+    agentState.finish({ reason: `error ${resp.status}`, converged: false, serverSignature: "", clientSignature: "", evaluation: null });
     return;
   }
 
@@ -79,10 +83,14 @@ export async function startAgent(args: StartAgentArgs): Promise<void> {
           accumulated.push(parsed.data);
           onOps(accumulated.slice());
         }
+      } else if (ev.type === "objectives") {
+        evaluation = ev.evaluation as VectorEvaluation;
+        agentState.setEvaluation(evaluation);
       } else if (ev.type === "done") {
         serverSignature = String(ev.signature ?? "");
         reason = String(ev.reason ?? "ended");
         converged = Boolean(ev.converged);
+        if (ev.evaluation) evaluation = ev.evaluation as VectorEvaluation;
       }
     }
   }
@@ -93,7 +101,7 @@ export async function startAgent(args: StartAgentArgs): Promise<void> {
   } else if (serverSignature) {
     console.log("[agent] signature match: client render equals server score");
   }
-  agentState.finish({ reason, converged, serverSignature, clientSignature });
+  agentState.finish({ reason, converged, serverSignature, clientSignature, evaluation });
 }
 
 // Re-expand the same op sequence the client rendered and hash it, in the format the server uses
