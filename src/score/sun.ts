@@ -7,6 +7,7 @@ import {
 } from "../study/heightfield";
 import { computeInsolation } from "../study/insolation";
 import { computeShadowLedger, sunConfidence } from "../study/shadowLedger";
+import { sunConfidenceLabel } from "./confidence";
 import { meanSunHours, sunlitFraction } from "../study/sunHours";
 import { SUNLIT_MIN_HOURS } from "../study/netNewShadow";
 import { massingToHeightfieldBuildings } from "../generate/heightfieldFromMassing";
@@ -28,12 +29,12 @@ export function sunScore(
     spec
   );
   const result = computeInsolation(region, resolution, field, samples);
-  const ledger = computeShadowLedger(region, resolution, field, samples);
+  const sc = sunConfidence(computeShadowLedger(region, resolution, field, samples));
   return {
     basis: "geometry",
     meanSunHours: meanSunHours(result),
     sunlitFraction: sunlitFraction(result, SUNLIT_MIN_HOURS),
     windowHours: result.maxPossibleHours,
-    confidence: sunConfidence(ledger),
+    confidence: sunConfidenceLabel(sc.class, sc.shadowRiskFraction, sc.lostHours),
   };
 }

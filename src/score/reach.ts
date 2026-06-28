@@ -1,5 +1,6 @@
 import type { ExpandedDistrict } from "../generate/expand";
 import type { ReachScore } from "./types";
+import { reachConfidence } from "./confidence";
 import { reachability, parkAccessNodes } from "../reach/reachability";
 
 // The reachability tool: "is the park reachable in N minutes for the district's homes". Geometry-
@@ -9,7 +10,8 @@ import { reachability, parkAccessNodes } from "../reach/reachability";
 export function reachScore(
   district: ExpandedDistrict,
   withinMinutes: number,
-  walkSpeedMps?: number
+  walkSpeedMps?: number,
+  coverage: "full" | "partial" = "full" // the real network's catchment coverage (ADR-R25), full on Toronto
 ): ReachScore {
   const r = reachability(district, parkAccessNodes(district), withinMinutes, walkSpeedMps);
   return {
@@ -18,5 +20,6 @@ export function reachScore(
     worstCaseMinutes: r.worstCaseMinutes,
     unreachableCount: r.unreachableCount,
     withinMinutes: r.withinMinutes,
+    confidence: reachConfidence(r.reachedFraction, coverage),
   };
 }

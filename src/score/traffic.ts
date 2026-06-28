@@ -2,6 +2,7 @@ import type { ExpandedDistrict } from "../generate/expand";
 import type { TrafficScore } from "./types";
 import { solveFlowLite, type ODNodeFlow } from "../traffic/assignment";
 import { buildAdjacency, type RoutableEdge, type RoutableGraph } from "../traffic/routableGraph";
+import { demandConditionalConfidence } from "./confidence";
 import { clampCongestion } from "../render/flowField";
 
 // Trips per resident in the peak hour. An ASSUMED scenario knob (ADR-R13), not a prediction, which is
@@ -51,10 +52,12 @@ export function trafficScore(
     if (vc > 0.8) congested++;
   }
 
+  const assumedDemandNote = `conditional on an assumed ${TRIPS_PER_RESIDENT} peak-hour trips per resident, a scenario knob, not a prediction (ADR-R13)`;
   return {
     basis: "demand-conditional",
     maxVC,
     congestedFraction: count === 0 ? 0 : congested / count,
-    assumedDemandNote: `conditional on an assumed ${TRIPS_PER_RESIDENT} peak-hour trips per resident, a scenario knob, not a prediction (ADR-R13)`,
+    assumedDemandNote,
+    confidence: demandConditionalConfidence(assumedDemandNote),
   };
 }

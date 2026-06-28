@@ -4,18 +4,20 @@
 // honest. The three geometry scores are as solid as the determinism gate makes them; traffic rests on
 // an assumed demand scenario (ADR-R13), never a prediction.
 
-import type { SunConfidence } from "../study/shadowLedger";
+import type { ScoreConfidence } from "./confidence";
 
 export type ScoreBasis = "geometry" | "demand-conditional";
+
+// Every score carries a uniform confidence (I3b, ADR-R26), propagated to the inputs that drove it: sun
+// from the shadow ledger, reach from coverage, population by greenfield construction, traffic from the
+// demand assumption. The agent and the UI read score.confidence the same way regardless of which one.
 
 export type SunScore = {
   basis: "geometry";
   meanSunHours: number;
   sunlitFraction: number;
   windowHours: number;
-  // The sun number's confidence, propagated to the occluders that actually shadowed this region (I3a,
-  // ADR-R26): low when guessed-height towers cast the shadow, high when measured or generated ones do.
-  confidence: SunConfidence;
+  confidence: ScoreConfidence;
 };
 
 export type UnitScore = {
@@ -24,6 +26,7 @@ export type UnitScore = {
   requestedUnits: number;
   shortfall: number;
   population: number;
+  confidence: ScoreConfidence;
 };
 
 export type ReachScore = {
@@ -32,6 +35,7 @@ export type ReachScore = {
   worstCaseMinutes: number;
   unreachableCount: number;
   withinMinutes: number;
+  confidence: ScoreConfidence;
 };
 
 export type TrafficScore = {
@@ -39,6 +43,7 @@ export type TrafficScore = {
   maxVC: number;
   congestedFraction: number;
   assumedDemandNote: string;
+  confidence: ScoreConfidence;
 };
 
 export type DistrictScores = {

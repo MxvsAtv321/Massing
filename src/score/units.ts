@@ -1,5 +1,6 @@
 import type { ExpandedDistrict } from "../generate/expand";
 import type { UnitScore } from "./types";
+import { greenfieldPopulationConfidence } from "./confidence";
 import { AVG_HOUSEHOLD_SIZE } from "../generate/fill";
 
 // Units and population from the district's FillResult, the exact achieved count the expander already
@@ -19,5 +20,6 @@ export function unitScore(district: ExpandedDistrict): UnitScore {
     requestedUnits,
     shortfall,
     population: Math.round(achievedUnits * AVG_HOUSEHOLD_SIZE),
+    confidence: greenfieldPopulationConfidence(),
   };
 }
