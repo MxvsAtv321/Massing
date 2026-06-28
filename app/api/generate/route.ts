@@ -25,6 +25,7 @@ export const maxDuration = 120;
 type Body = {
   populationTarget: number;
   reachCeiling?: number;
+  cityId?: string;
   region: Placement["region"];
   seed: number;
   bearingDeg: number;
@@ -67,7 +68,7 @@ export async function POST(req: NextRequest) {
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(e)}\n\n`));
       try {
         emit({ type: "status", text: "loading city context" });
-        const { ctx, opts } = await buildServerContext();
+        const { ctx, opts } = await buildServerContext(body.cityId);
         const sandbox = new Sandbox(ctx, opts, { reach: { withinMinutes: reachCeiling } });
         const client = new Anthropic({ apiKey });
         const agent = new ClaudeAgent(

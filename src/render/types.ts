@@ -4,6 +4,7 @@ import type { AgentGraphData } from "../sim/agentGraph";
 import type { RoutableEdge } from "../traffic/routableGraph";
 import type { ODNodeFlow } from "../traffic/assignment";
 import type { RealGraph } from "../generate/stitch";
+import type { AnalysisRegion } from "../study/studyTypes";
 
 // One drivable street centerline, deduped from the directed road graph.
 export type StreetSegment = {
@@ -40,6 +41,9 @@ export type CityPayload = {
   originLatLon: [number, number]; // stored [lon, lat] (loader convention)
   metresPerStorey: number;
   ianaZone: string; // per-city IANA zone for the solar clock (I0)
+  cityId: string; // the active city id (I6)
+  displayName: string; // human-readable place name for the UI
+  defaultStudyRegion: AnalysisRegion; // the city's analysis anchor (authored or origin-centered)
 };
 
 export type ModelBounds = {

@@ -1,5 +1,5 @@
 import { loadCityModel } from "../model/loadCityModel";
-import { cityFiles } from "../model/cities";
+import { cityFiles, DEFAULT_CITY } from "../model/cities";
 import { loadRoadNetwork } from "../network/build";
 import { toRoutableGraph } from "../traffic/routableGraph";
 import { buildClusterCentroids } from "../render/cityIndex";
@@ -12,11 +12,11 @@ import type { ExpandOpts } from "../generate/expand";
 // streamed ops produce identical geometry. That equality is the determinism contract the G5 signature
 // gate checks: roadCenterlines, opts, cluster centroids, and the real graph must match the client's.
 // THREE-free, so it stays a clean server module (no three import pulled into the route).
-export async function buildServerContext(): Promise<{
+export async function buildServerContext(cityId: string = DEFAULT_CITY): Promise<{
   ctx: GenerativeContext;
   opts: ExpandOpts;
 }> {
-  const files = cityFiles(process.cwd());
+  const files = cityFiles(process.cwd(), cityId);
   const model = await loadCityModel(files.footprints, files.manifest);
   const network = loadRoadNetwork(files.network, model.originLatLon);
   const graph = toRoutableGraph(network);

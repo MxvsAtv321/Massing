@@ -247,6 +247,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
       void startAgent({
         populationTarget: 40000,
         reachCeiling: 5,
+        cityId: payload.cityId,
         placement: { region, seed: 7, bearingDeg },
         ctx: genContext,
         expandOpts: genOpts,
@@ -255,7 +256,13 @@ export function Scene({ payload }: { payload: CityPayload }) {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [bounds.center, clusterCentroidsEnu, payload.streets, applyGenDirective, genContext, genOpts]);
+  }, [bounds.center, clusterCentroidsEnu, payload.streets, payload.cityId, applyGenDirective, genContext, genOpts]);
+
+  // Seed the study region from the active city's default anchor (authored for Toronto, origin-centered
+  // for an ingested city), so the overlay and the study land over the right city on load (I6).
+  useEffect(() => {
+    studyState.setRegion(payload.defaultStudyRegion);
+  }, [payload.defaultStudyRegion]);
 
   return (
     <>

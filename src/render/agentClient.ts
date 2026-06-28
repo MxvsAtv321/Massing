@@ -17,6 +17,7 @@ import { agentState } from "./agentStore";
 export type StartAgentArgs = {
   populationTarget: number;
   reachCeiling: number;
+  cityId: string;
   placement: Placement;
   ctx: GenerativeContext;
   expandOpts: ExpandOpts;
@@ -24,7 +25,7 @@ export type StartAgentArgs = {
 };
 
 export async function startAgent(args: StartAgentArgs): Promise<void> {
-  const { populationTarget, reachCeiling, placement, ctx, expandOpts, onOps } = args;
+  const { populationTarget, reachCeiling, cityId, placement, ctx, expandOpts, onOps } = args;
   agentState.start(populationTarget);
 
   const accumulated: GenerativeOp[] = [];
@@ -41,6 +42,7 @@ export async function startAgent(args: StartAgentArgs): Promise<void> {
       body: JSON.stringify({
         populationTarget,
         reachCeiling,
+        cityId,
         region: placement.region,
         seed: placement.seed,
         bearingDeg: placement.bearingDeg,
