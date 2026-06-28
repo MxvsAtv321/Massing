@@ -8,10 +8,11 @@ import type { HeightfieldBuilding } from "../study/heightfield";
 export function massingToHeightfieldBuildings(
   massing: MassingPlacement[]
 ): HeightfieldBuilding[] {
+  // The proposal's own geometry, so its heights are exactly what the agent chose: high confidence (I3a).
   const out: HeightfieldBuilding[] = [];
   for (const m of massing) {
-    out.push({ footprint: [m.footprint], height: m.height });
-    if (m.podium) out.push({ footprint: [m.podium.footprint], height: m.podium.height });
+    out.push({ footprint: [m.footprint], height: m.height, confidence: "generated" });
+    if (m.podium) out.push({ footprint: [m.podium.footprint], height: m.podium.height, confidence: "generated" });
   }
   return out;
 }

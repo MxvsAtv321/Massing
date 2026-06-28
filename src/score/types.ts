@@ -4,6 +4,8 @@
 // honest. The three geometry scores are as solid as the determinism gate makes them; traffic rests on
 // an assumed demand scenario (ADR-R13), never a prediction.
 
+import type { SunConfidence } from "../study/shadowLedger";
+
 export type ScoreBasis = "geometry" | "demand-conditional";
 
 export type SunScore = {
@@ -11,6 +13,9 @@ export type SunScore = {
   meanSunHours: number;
   sunlitFraction: number;
   windowHours: number;
+  // The sun number's confidence, propagated to the occluders that actually shadowed this region (I3a,
+  // ADR-R26): low when guessed-height towers cast the shadow, high when measured or generated ones do.
+  confidence: SunConfidence;
 };
 
 export type UnitScore = {

@@ -13,11 +13,39 @@ export type Heightfield = {
   height: number; // cells north
   maxH: Float32Array; // length width*height, tallest building over each cell, metres
   maxHeight: number; // global max, the raymarch early-out ceiling
+  conf: Uint8Array; // length width*height, confidence code of the tallest building over each cell (I3a)
 };
+
+// The height-provenance class of an occluder, for the shadow ledger (I3a, ADR-R26). Trusted occluders
+// are measured heights and the proposal's own generated geometry; untrusted are estimated or
+// hypothetical heights whose shadow boundary is uncertain.
+export type OccluderConfidence = "measured" | "estimated" | "hypothetical" | "generated";
+
+// Cell encoding: 0 open ground (no building), then the four classes. Kept as small integers so the
+// parallel field is a Uint8Array the raymarch reads cheaply.
+export const CONF_OPEN = 0;
+export const CONF_MEASURED = 1;
+export const CONF_ESTIMATED = 2;
+export const CONF_HYPOTHETICAL = 3;
+export const CONF_GENERATED = 4;
+
+export function confCode(c: OccluderConfidence): number {
+  switch (c) {
+    case "measured":
+      return CONF_MEASURED;
+    case "estimated":
+      return CONF_ESTIMATED;
+    case "hypothetical":
+      return CONF_HYPOTHETICAL;
+    case "generated":
+      return CONF_GENERATED;
+  }
+}
 
 export type HeightfieldBuilding = {
   footprint: number[][][]; // ENU rings [east, north]; ring 0 is the outer
   height: number; // metres above grade
+  confidence?: OccluderConfidence; // height provenance; unknown defaults to estimated (conservative)
 };
 
 export type HeightfieldSpec = {
@@ -54,12 +82,14 @@ export function buildHeightfield(
 ): Heightfield {
   const { originE, originN, cellSize, width, height } = spec;
   const maxH = new Float32Array(width * height);
+  const conf = new Uint8Array(width * height);
   let maxHeight = 0;
 
   for (const b of buildings) {
     if (b.height <= 0) continue;
     const ring = b.footprint[0];
     if (!ring || ring.length < 3) continue;
+    const code = confCode(b.confidence ?? "estimated");
 
     let minE = Infinity;
     let minN = Infinity;
@@ -83,14 +113,17 @@ export function buildHeightfield(
         const ec = originE + (ci + 0.5) * cellSize;
         if (pointInRing(ring, ec, nc)) {
           const idx = cj * width + ci;
-          if (b.height > maxH[idx]) maxH[idx] = b.height;
+          if (b.height > maxH[idx]) {
+            maxH[idx] = b.height;
+            conf[idx] = code; // the tallest building owns the cell, so it owns the shadow it casts
+          }
         }
       }
     }
     if (b.height > maxHeight) maxHeight = b.height;
   }
 
-  return { originE, originN, cellSize, width, height, maxH, maxHeight };
+  return { originE, originN, cellSize, width, height, maxH, maxHeight, conf };
 }
 
 // Tallest building height over an ENU point, 0 on open ground or outside the grid.
