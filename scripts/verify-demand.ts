@@ -1,32 +1,24 @@
-import * as fs from "fs";
 import * as path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
-import { cityFiles } from "../src/model/cities";
+import { cityFiles, DEFAULT_CITY } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
-import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
-import {
-  exampleScenario,
-  summariseConservation,
-  validateFlow,
-  type CordonSide,
-} from "../src/traffic/demand";
-import { lonLatToEnu } from "../src/coords/enu";
+import { deriveCordon } from "../src/traffic/deriveCordon";
+import { exampleScenario, summariseConservation, validateFlow, type CordonSide } from "../src/traffic/demand";
 
-// Structural gate for the demand scenario. Demand is an assumption, so there is no
-// falsification oracle; this proves the scenario is well-formed and Part-3-ready against
-// the real network. Mirrors scripts/verify-network.ts.
+// Structural gate for the auto-derived cordon (I5). Demand is an assumption, so there is no falsification
+// oracle; this proves the cordon the engine derives from the road graph is well-formed on any city, with
+// no hand-placed gateways: distinct connectors, through-direction coverage, and a balanced example
+// scenario. Usage: pnpm verify:demand [cityId]
 
 async function main(): Promise<void> {
+  const cityId = process.argv[2] ?? DEFAULT_CITY;
   const root = path.resolve(__dirname, "..");
-  const files = cityFiles(root);
+  const files = cityFiles(root, cityId);
   const model = await loadCityModel(files.footprints, files.manifest);
   const network = loadRoadNetwork(files.network, model.originLatLon);
-  const cordon: CordonFile = JSON.parse(fs.readFileSync(files.cordon, "utf8"));
 
-  const { places, unresolved } = resolveCordon(network, cordon);
-  const [lon0, lat0] = model.originLatLon;
-
-  console.log(`Cordon: ${cordon.gateways.length} gateways, ${places.length} resolved`);
+  const places = deriveCordon(network);
+  console.log(`Auto-cordon: ${cityId}, ${places.length} gateways derived from the road graph`);
   console.log("");
 
   let failed = false;
@@ -35,37 +27,18 @@ async function main(): Promise<void> {
     failed = true;
   };
 
-  // -- Check 1: every gateway resolves within tolerance -----------------------
-  console.log("Resolution");
-  const header = `  ${"Gateway".padEnd(18)} ${"Side".padStart(4)} ${"Resolve m".padStart(10)}  Result`;
-  console.log(header);
-  for (const spec of cordon.gateways) {
-    const [ex, ey] = lonLatToEnu(spec.lonlat[0], spec.lonlat[1], lon0, lat0);
-    let bestDist = Infinity;
-    for (const n of network.nodes) {
-      const d = Math.hypot(n.enu[0] - ex, n.enu[1] - ey);
-      if (d < bestDist) bestDist = d;
-    }
-    const ok = bestDist <= cordon.maxResolveMetres;
-    console.log(
-      `  ${spec.id.padEnd(18)} ${spec.side.padStart(4)} ${bestDist.toFixed(1).padStart(10)}  ${ok ? "PASS" : "FAIL"}`
-    );
-    if (!ok) fail(`gateway ${spec.id} resolves at ${bestDist.toFixed(1)} m (> ${cordon.maxResolveMetres} m)`);
-  }
-  if (unresolved.length > 0) fail(`${unresolved.length} gateways unresolved`);
-  console.log("");
-
-  // -- Check 2: distinct connectors and direction coverage --------------------
-  console.log("Coverage");
+  // -- Check 1: gateways exist and connect to distinct nodes ------------------
+  if (places.length === 0) fail("no boundary gateways derived");
   const connectors = new Set<string>();
   for (const p of places) {
-    if (connectors.has(p.connectorNodeId)) {
-      fail(`gateways ${p.id} shares a connector node with another gateway`);
-    }
+    if (connectors.has(p.connectorNodeId)) fail(`gateway ${p.id} shares a connector node`);
     connectors.add(p.connectorNodeId);
   }
+
+  // -- Check 2: through-direction coverage ------------------------------------
   const bySide: Record<CordonSide, number> = { N: 0, E: 0, S: 0, W: 0 };
   for (const p of places) bySide[p.side]++;
+  console.log("Coverage");
   console.log(`  per side: N ${bySide.N}  E ${bySide.E}  S ${bySide.S}  W ${bySide.W}`);
   console.log(`  distinct connector nodes: ${connectors.size}/${places.length}`);
   if (bySide.E < 1 || bySide.W < 1) {
@@ -74,7 +47,6 @@ async function main(): Promise<void> {
   console.log("");
 
   // -- Check 3: the example scenario is valid and conserved -------------------
-  console.log("Example scenario");
   const placeIds = new Set(places.map((p) => p.id));
   const flows = exampleScenario(places);
   let badFlows = 0;
@@ -86,6 +58,7 @@ async function main(): Promise<void> {
     }
   }
   const cons = summariseConservation(places, flows);
+  console.log("Example scenario");
   console.log(`  ${flows.length} flows, ${cons.totalTrips} trips/hour total, balanced: ${cons.balanced}`);
   console.log(`  invalid flows: ${badFlows}`);
   if (!cons.balanced) fail("example scenario is not per-gateway balanced");
@@ -95,7 +68,7 @@ async function main(): Promise<void> {
     console.error("GATE FAILED");
     process.exit(1);
   }
-  console.log("GATE PASSED");
+  console.log("GATE PASSED (auto-cordon structural, no hand-placed gateways)");
 }
 
 main().catch((err) => {
