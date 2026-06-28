@@ -20,7 +20,8 @@
     "verify:counts": "tsx scripts/verify-counts.ts",
     "verify:generate": "tsx scripts/verify-generate.ts",
     "verify:reachability": "tsx scripts/verify-reachability.ts",
-    "verify:structure": "tsx scripts/verify-structure.ts"
+    "verify:structure": "tsx scripts/verify-structure.ts",
+    "ingest:city": "tsx scripts/ingest-city.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
