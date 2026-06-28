@@ -19,7 +19,8 @@
     "verify:flow": "tsx scripts/verify-flow.ts",
     "verify:counts": "tsx scripts/verify-counts.ts",
     "verify:generate": "tsx scripts/verify-generate.ts",
-    "verify:reachability": "tsx scripts/verify-reachability.ts"
+    "verify:reachability": "tsx scripts/verify-reachability.ts",
+    "verify:structure": "tsx scripts/verify-structure.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.100.1",
