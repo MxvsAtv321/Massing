@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
 import { analyzeConnectivity } from "../src/network/connectivity";
 import { dijkstra } from "../src/network/shortestPath";
@@ -48,17 +49,10 @@ function hasEdge(network: RoadNetwork, fromId: string, toId: string): boolean {
 
 async function main(): Promise<void> {
   const root = path.resolve(__dirname, "..");
-  const model = await loadCityModel(
-    path.join(root, "data", "stlawrence.geojson"),
-    path.join(root, "data", "sources.json")
-  );
-  const network = loadRoadNetwork(
-    path.join(root, "data", "network.json"),
-    model.originLatLon
-  );
-  const known: KnownRoutes = JSON.parse(
-    fs.readFileSync(path.join(root, "data", "known-routes.json"), "utf8")
-  );
+  const files = cityFiles(root);
+  const model = await loadCityModel(files.footprints, files.manifest);
+  const network = loadRoadNetwork(files.network, model.originLatLon);
+  const known: KnownRoutes = JSON.parse(fs.readFileSync(files.knownRoutes, "utf8"));
 
   const [lon0, lat0] = model.originLatLon;
   const cov = network.coverage;

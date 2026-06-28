@@ -1,4 +1,6 @@
 {
+  "cityId": "toronto",
+  "displayName": "St. Lawrence, Toronto",
   "dataset": "City of Toronto 3D Massing 2025",
   "datasetUrl": "https://open.toronto.ca/dataset/3d-massing/",
   "license": "Open Government Licence - Toronto",

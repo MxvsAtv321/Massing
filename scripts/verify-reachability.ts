@@ -1,5 +1,5 @@
-import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
 import { GenerativeOpSchema, type GenerativeOp } from "../src/generate/op";
 import { expandDistrict } from "../src/generate/expand";
@@ -25,14 +25,9 @@ function dist(a: [number, number], b: [number, number]): number {
 }
 
 async function main(): Promise<void> {
-  const model = await loadCityModel(
-    path.join(process.cwd(), "data", "stlawrence.geojson"),
-    path.join(process.cwd(), "data", "sources.json")
-  );
-  const network = loadRoadNetwork(
-    path.join(process.cwd(), "data", "network.json"),
-    model.originLatLon
-  );
+  const files = cityFiles(process.cwd());
+  const model = await loadCityModel(files.footprints, files.manifest);
+  const network = loadRoadNetwork(files.network, model.originLatLon);
   const realGraph: RealGraph = {
     nodes: network.nodes.map((n) => ({ id: n.id, enu: n.enu })),
     edges: network.edges.map((e) => ({ from: e.from, to: e.to, lengthMetres: e.lengthMetres })),

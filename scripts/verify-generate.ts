@@ -2,6 +2,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
 import { GenerativeOpSchema, type GenerativeOp } from "../src/generate/op";
 import { expandDistrict, geometrySignature } from "../src/generate/expand";
@@ -19,14 +20,9 @@ import type { RealGraph } from "../src/generate/stitch";
 // unverified here and is recorded in the ADR, not assumed away.
 
 async function main(): Promise<void> {
-  const model = await loadCityModel(
-    path.join(process.cwd(), "data", "stlawrence.geojson"),
-    path.join(process.cwd(), "data", "sources.json")
-  );
-  const network = loadRoadNetwork(
-    path.join(process.cwd(), "data", "network.json"),
-    model.originLatLon
-  );
+  const files = cityFiles(process.cwd());
+  const model = await loadCityModel(files.footprints, files.manifest);
+  const network = loadRoadNetwork(files.network, model.originLatLon);
 
   // Center a sample district on the network bounding box; the whole real graph is the network the
   // generated grid stitches to (the gate and reachability read this one combined graph).

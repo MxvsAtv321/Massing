@@ -1,6 +1,6 @@
 import fs from "fs";
-import path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
 import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
 import { exampleScenario } from "../src/traffic/demand";
@@ -17,15 +17,10 @@ import CanvasClient from "./_components/CanvasClient";
 // component) and hand the client island a slim payload. The network shares the
 // city model's ENU origin, so streets and buildings co-register by construction.
 export default async function Page() {
-  const model = await loadCityModel(
-    path.join(process.cwd(), "data", "stlawrence.geojson"),
-    path.join(process.cwd(), "data", "sources.json")
-  );
+  const files = cityFiles(process.cwd());
+  const model = await loadCityModel(files.footprints, files.manifest);
 
-  const roadNetwork = loadRoadNetwork(
-    path.join(process.cwd(), "data", "network.json"),
-    model.originLatLon
-  );
+  const roadNetwork = loadRoadNetwork(files.network, model.originLatLon);
 
   const buildings: BuildingForScene[] = model.buildings.map((b) => ({
     id: b.id,
@@ -44,9 +39,7 @@ export default async function Page() {
   // through-traffic scenario, so streets can show congestion now and the agents
   // can read per-edge speeds later (Unit 5). Clearly simulated, not measured.
   const graph = toRoutableGraph(roadNetwork);
-  const cordon = JSON.parse(
-    fs.readFileSync(path.join(process.cwd(), "data", "cordon.json"), "utf8")
-  ) as CordonFile;
+  const cordon = JSON.parse(fs.readFileSync(files.cordon, "utf8")) as CordonFile;
   const { places } = resolveCordon(roadNetwork, cordon);
   const connectorOf = new Map(places.map((p) => [p.id, p.connectorNodeId]));
   const od: ODNodeFlow[] = exampleScenario(places)

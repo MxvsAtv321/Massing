@@ -7,6 +7,8 @@ import type { SourceManifest } from "../src/model/types";
 // ---------------------------------------------------------------------------
 
 const BASE_MANIFEST: SourceManifest = {
+  cityId: "test",
+  displayName: "Test City",
   dataset: "Test Dataset",
   datasetUrl: "https://example.com",
   license: "Test",

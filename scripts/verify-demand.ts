@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { loadRoadNetwork } from "../src/network/build";
 import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
 import {
@@ -17,17 +18,10 @@ import { lonLatToEnu } from "../src/coords/enu";
 
 async function main(): Promise<void> {
   const root = path.resolve(__dirname, "..");
-  const model = await loadCityModel(
-    path.join(root, "data", "stlawrence.geojson"),
-    path.join(root, "data", "sources.json")
-  );
-  const network = loadRoadNetwork(
-    path.join(root, "data", "network.json"),
-    model.originLatLon
-  );
-  const cordon: CordonFile = JSON.parse(
-    fs.readFileSync(path.join(root, "data", "cordon.json"), "utf8")
-  );
+  const files = cityFiles(root);
+  const model = await loadCityModel(files.footprints, files.manifest);
+  const network = loadRoadNetwork(files.network, model.originLatLon);
+  const cordon: CordonFile = JSON.parse(fs.readFileSync(files.cordon, "utf8"));
 
   const { places, unresolved } = resolveCordon(network, cordon);
   const [lon0, lat0] = model.originLatLon;

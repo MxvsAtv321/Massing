@@ -93,7 +93,7 @@ async function main(): Promise<void> {
   };
 
   const file: CountsFile = { provenance, stations };
-  const outPath = path.resolve(__dirname, "..", "data", "traffic-counts.json");
+  const outPath = path.resolve(__dirname, "..", "data", "cities", "toronto", "traffic-counts.json");
   fs.writeFileSync(outPath, JSON.stringify(file, null, 2));
   console.log(`\nWrote ${outPath}`);
   console.log(`  ${stations.length} count stations in the catchment`);

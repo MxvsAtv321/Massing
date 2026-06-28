@@ -39,6 +39,8 @@ export type HeightAccuracyEntry =
   | { kind: "estimated"; sigma_m: number; citation?: string; note?: string };
 
 export type SourceManifest = {
+  cityId: string; // canonical city id, equals the data/cities/<id>/ folder name
+  displayName: string; // human-readable place name for UI and agent prompts
   dataset: string;
   datasetUrl: string;
   license: string;

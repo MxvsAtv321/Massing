@@ -3,7 +3,8 @@
 import { useSyncExternalStore } from "react";
 import { parseRegions } from "../study/region";
 import type { AnalysisRegion, RegionField, StudyResult } from "../study/studyTypes";
-import studyRegionsJson from "../../data/study-regions.json";
+// Toronto default until a city selector lands (I6); the study regions then come from the active city.
+import studyRegionsJson from "../../data/cities/toronto/study-regions.json";
 
 // The active calendar date and analysis region for the scene and the sun-access
 // study (Unit 8), shared by the lighting (which drives the real sun off the date),

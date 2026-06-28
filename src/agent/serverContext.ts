@@ -1,5 +1,5 @@
-import path from "path";
 import { loadCityModel } from "../model/loadCityModel";
+import { cityFiles } from "../model/cities";
 import { loadRoadNetwork } from "../network/build";
 import { toRoutableGraph } from "../traffic/routableGraph";
 import { buildClusterCentroids } from "../render/cityIndex";
@@ -16,14 +16,9 @@ export async function buildServerContext(): Promise<{
   ctx: GenerativeContext;
   opts: ExpandOpts;
 }> {
-  const model = await loadCityModel(
-    path.join(process.cwd(), "data", "stlawrence.geojson"),
-    path.join(process.cwd(), "data", "sources.json")
-  );
-  const network = loadRoadNetwork(
-    path.join(process.cwd(), "data", "network.json"),
-    model.originLatLon
-  );
+  const files = cityFiles(process.cwd());
+  const model = await loadCityModel(files.footprints, files.manifest);
+  const network = loadRoadNetwork(files.network, model.originLatLon);
   const graph = toRoutableGraph(network);
 
   const buildings: BuildingForScene[] = model.buildings.map((b) => ({

@@ -158,7 +158,7 @@ async function main(): Promise<void> {
 
   const out: RawNetworkFile = { provenance, nodes, ways };
 
-  const outPath = path.resolve(__dirname, "..", "data", "network.json");
+  const outPath = path.resolve(__dirname, "..", "data", "cities", "toronto", "network.json");
   fs.writeFileSync(outPath, JSON.stringify(out, null, 2));
 
   console.log(`\nWrote ${outPath}`);

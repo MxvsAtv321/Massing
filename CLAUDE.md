@@ -54,11 +54,11 @@ Originals ADR-001 to ADR-010 are carried, amended, or superseded under the rebui
 
 ## Data
 
-- The snapshot is committed in `data/` and is the single source. Do not fetch anything from the network at build or runtime.
-  - `data/stlawrence.geojson`: EPSG:3857 FeatureCollection of building massing polygons (1315 of them).
-  - `data/sources.json`: the source manifest. Used now as a dataset attribution credit line, not an honesty contract.
-  - `data/network.json`: the OSM drivable road graph for the catchment, reprojected at load through the city's shared ENU origin so roads and buildings co-register.
-  - `data/known-heights.json`, `data/known-routes.json`, `data/cordon.json`, `data/traffic-counts.json`: ground-truth and traffic inputs, now consumed by the dev sanity scripts, not as build gates.
+- The snapshot is committed under `data/cities/<id>/` and is the single source. Do not fetch anything from the network at build or runtime. Each city is one folder with canonical filenames, resolved through `src/model/cities.ts` (`cityFiles`); Toronto is the first canonical city and the default (I1).
+  - `data/cities/toronto/footprints.geojson`: EPSG:3857 FeatureCollection of building massing polygons (1315 of them).
+  - `data/cities/toronto/manifest.json`: the source manifest (`SourceManifest`), now carrying `cityId`, `displayName`, and `ianaZone` alongside the dataset attribution.
+  - `data/cities/toronto/network.json`: the OSM drivable road graph for the catchment, reprojected at load through the city's shared ENU origin so roads and buildings co-register.
+  - `data/cities/toronto/{known-heights,known-routes,cordon,traffic-counts,study-regions}.json`: ground-truth, traffic, and analysis-anchor inputs, consumed by the dev sanity scripts (the Toronto ground-truth gates), not as build gates.
 - Height field is `AVG_HEIGHT` (height above grade, metres). Extrude from a flat plane (ADR-002, carried); no datum arithmetic.
 - Exclude the known processing artifact: features with `SURF_ELEV` equal to 130.07 m.
 - A real building may be several polygons; the grouping subsystem (`src/model/grouping.ts`) handles identity. Geometry is per polygon.

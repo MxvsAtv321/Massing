@@ -39,6 +39,9 @@ function assertManifest(manifest: SourceManifest): void {
   if (!manifest.ianaZone) {
     throw new Error("Manifest missing required field: ianaZone");
   }
+  if (!manifest.cityId) {
+    throw new Error("Manifest missing required field: cityId");
+  }
   if (!manifest.defaultHeightAccuracy) {
     throw new Error("Manifest missing required field: defaultHeightAccuracy");
   }

@@ -6,7 +6,7 @@ import {
   parseRegions,
 } from "../src/study/region";
 import type { AnalysisRegion } from "../src/study/studyTypes";
-import regionsJson from "../data/study-regions.json";
+import regionsJson from "../data/cities/toronto/study-regions.json";
 
 const rect: AnalysisRegion = {
   id: "r",

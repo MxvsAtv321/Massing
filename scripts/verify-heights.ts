@@ -1,6 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { loadCityModel } from "../src/model/loadCityModel";
+import { cityFiles } from "../src/model/cities";
 import { lonLatToEnu } from "../src/coords/enu";
 import type { CityModel, ClusterIndexEntry } from "../src/model/types";
 
@@ -85,9 +86,10 @@ function findCluster(
 
 async function main(): Promise<void> {
   const root = path.resolve(__dirname, "..");
-  const geojsonPath = path.join(root, "data", "stlawrence.geojson");
-  const sourcesPath = path.join(root, "data", "sources.json");
-  const knownPath = path.join(root, "data", "known-heights.json");
+  const files = cityFiles(root);
+  const geojsonPath = files.footprints;
+  const sourcesPath = files.manifest;
+  const knownPath = files.knownHeights;
 
   console.log("Loading city model...");
   const model = await loadCityModel(geojsonPath, sourcesPath);
