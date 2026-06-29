@@ -3,6 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { parseRegions } from "../study/region";
 import type { AnalysisRegion, RegionField, StudyResult } from "../study/studyTypes";
+import type { SunConfidence } from "../study/shadowLedger";
 // Toronto default until a city selector lands (I6); the study regions then come from the active city.
 import studyRegionsJson from "../../data/cities/toronto/study-regions.json";
 
@@ -24,6 +25,7 @@ export type StudyState = {
   status: StudyStatus; // study lifecycle, for the panel and the heatmap
   field: RegionField | null; // the computed sun-hours field, null until first run
   result: StudyResult | null; // net-new metric vs the unedited baseline, null until first run
+  sunConfidence: SunConfidence | null; // confidence of the sun number, from the shadow ledger (I6c)
 };
 
 const SCENE_OPEN_DATE = "2026-06-21"; // summer solstice, the established opening look
@@ -40,6 +42,7 @@ const state: StudyState = {
   status: "idle",
   field: null,
   result: null,
+  sunConfidence: null,
 };
 let snapshot: StudyState = { ...state };
 const listeners = new Set<() => void>();
@@ -75,6 +78,10 @@ export const studyState = {
   },
   setResult(result: StudyResult | null): void {
     state.result = result;
+    emit();
+  },
+  setSunConfidence(c: SunConfidence | null): void {
+    state.sunConfidence = c;
     emit();
   },
   setStatus(status: StudyStatus): void {

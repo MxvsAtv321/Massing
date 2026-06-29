@@ -9,8 +9,10 @@ import { SUNLIT_MIN_HOURS, NET_NEW_THRESHOLD_HOURS } from "../study/netNewShadow
 // fraction. The register is deliberate (ADR-R16): real heights, real sun, stated as a
 // live exploratory study, with the window and date always visible so the number is
 // legible and falsifiable. No badge, no pass/fail verdict.
+const CONF_COLOR = { high: "#9fd0a8", medium: "#ffcf8a", low: "#ff9d6e" } as const;
+
 export function StudyPanel() {
-  const { status, field, result, date, region } = useStudyState();
+  const { status, field, result, date, region, sunConfidence } = useStudyState();
   const ready = status === "ready" && field !== null;
   const mean = ready ? meanSunHours(field) : 0;
   const max = field ? field.maxPossibleHours : 9;
@@ -62,6 +64,15 @@ export function StudyPanel() {
           <div>
             Sunlit area <b style={{ color: "#ffcf8a" }}>{Math.round(lit * 100)}%</b>
           </div>
+          {sunConfidence && (
+            <div style={{ color: CONF_COLOR[sunConfidence.class], marginTop: 1 }}>
+              Confidence <b>{sunConfidence.class}</b>
+              <span style={{ opacity: 0.6, fontSize: 10.5 }}>
+                {" "}
+                {Math.round(sunConfidence.shadowRiskFraction * 100)}% of shadow from estimated heights
+              </span>
+            </div>
+          )}
           {netNew && (
             <div style={{ color: netNew.exceedsThreshold ? "#ff9d6e" : "#9fd0a8" }}>
               Net-new shadow <b>+{netNew.netNewShadowHours.toFixed(1)} h</b>

@@ -12,6 +12,7 @@ import {
   type HeightfieldBuilding,
 } from "../study/heightfield";
 import { computeInsolation } from "../study/insolation";
+import { computeShadowLedger, sunConfidence } from "../study/shadowLedger";
 import { massingToHeightfieldBuildings } from "../generate/heightfieldFromMassing";
 import { netNewShadow, NET_NEW_THRESHOLD_HOURS } from "../study/netNewShadow";
 import {
@@ -35,6 +36,7 @@ import type { ModelBounds } from "./types";
 
 const CELL_M = 4; // heightfield cell size, metres
 const REGION_RES = 128; // sun-hours field is REGION_RES x REGION_RES
+const LEDGER_RES = 28; // coarse shadow-ledger grid, a confidence class needs no fine detail (I6c)
 
 export function StudyController({
   buildings,
@@ -64,6 +66,7 @@ export function StudyController({
           height: edited
             ? b.heightValue * editRatios.ratioFor(b.clusterId)
             : b.heightValue,
+          confidence: b.confidenceKind, // the real height's provenance, so the ledger keys on it (I6c)
         }));
         // The generated proposal occludes the sun too, so the heatmap reflects the new block (G2).
         return generatedMassing.length > 0
@@ -152,11 +155,14 @@ export function StudyController({
         baselineRef.current = { key, field: baseField };
       }
 
-      const current = await runInsolation(
-        buildHeightfield(hfBuildings(true), spec),
-        region,
-        samples
+      const currentField = buildHeightfield(hfBuildings(true), spec);
+      // The shadow ledger reads the per-cell confidence before runInsolation transfers maxH to the
+      // worker, so the sun number carries the confidence of the occluders that actually shadow this
+      // region (I3a/I6c): high when measured or generated towers cast it, low when estimated ones do.
+      studyState.setSunConfidence(
+        sunConfidence(computeShadowLedger(region, LEDGER_RES, currentField, samples))
       );
+      const current = await runInsolation(currentField, region, samples);
       const result = netNewShadow(
         baselineRef.current.field,
         current,
