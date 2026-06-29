@@ -1,7 +1,7 @@
 {
-  "cityId": "nyc",
-  "displayName": "Lower Manhattan, New York",
-  "dataset": "NYC Open Data Building Footprints (LiDAR height_roof), OSM roads",
+  "cityId": "nyc-levels",
+  "displayName": "Lower Manhattan, New York (levels)",
+  "dataset": "Heights relabeled as the levels tier, for the confidence A/B (same geometry)",
   "datasetUrl": "https://www.openstreetmap.org/",
   "license": "Open Database License (ODbL) 1.0",
   "vintage": "2026",
