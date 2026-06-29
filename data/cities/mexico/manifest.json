@@ -1,0 +1,44 @@
+{
+  "cityId": "mexico",
+  "displayName": "Cuauhtemoc, Mexico City",
+  "dataset": "OpenStreetMap buildings and roads",
+  "datasetUrl": "https://www.openstreetmap.org/",
+  "license": "Open Database License (ODbL) 1.0",
+  "vintage": "2026",
+  "retrievedDate": "2026-06-29",
+  "sourceCrs": "EPSG:3857",
+  "accuracyDisclaimer": "Heights are tiered by source provenance; building:levels-derived heights are estimates, not measured.",
+  "heightField": "AVG_HEIGHT",
+  "groundField": "SURF_ELEV",
+  "heightMslField": "HEIGHT_MSL",
+  "artifactFilter": {
+    "field": "SURF_ELEV",
+    "value": -9999,
+    "epsilon": 0.01
+  },
+  "sourceField": "HEIGHT_SRC",
+  "heightAccuracyBySource": {
+    "Lidar-Derived": {
+      "kind": "measured",
+      "sigma_m": 0.5,
+      "note": "city LiDAR-derived height"
+    },
+    "OSM height": {
+      "kind": "estimated",
+      "sigma_m": 2.5,
+      "note": "OSM height tag"
+    },
+    "OSM building:levels": {
+      "kind": "estimated",
+      "sigma_m": 5,
+      "note": "OSM building:levels times an assumed storey height, the weakest tier"
+    }
+  },
+  "defaultHeightAccuracy": {
+    "kind": "estimated",
+    "sigma_m": 5
+  },
+  "metresPerStorey": 3,
+  "ianaZone": "America/Mexico_City",
+  "bandScopeNote": "Heights are tiered by provenance (I4); the confidence travels with each building."
+}
