@@ -71,11 +71,22 @@ export function City({
         ? classifyArchetype(b.heightValue, footprintArea(b.footprint[0] ?? []))
         : "concrete";
       const app = archetypeAppearance(arch);
-      // Bake per-archetype roughness and metalness as vertex attributes (one value per vertex; box
-      // positions untouched). The material reads them; the scorers never see them (ADR-R29).
-      const n = g.getAttribute("position").count;
-      g.setAttribute("aRoughness", new THREE.BufferAttribute(new Float32Array(n).fill(app.roughness), 1));
-      g.setAttribute("aMetalness", new THREE.BufferAttribute(new Float32Array(n).fill(app.metalness), 1));
+      // Bake roughness and metalness as per-vertex attributes (box positions untouched, ADR-R29). Walls
+      // take the archetype; up-facing roof faces are forced matte and non-metal, so a glass tower does not
+      // mirror the sky off its flat top (V3, the within-envelope roof treatment). The silhouette outline
+      // stays the canonical box, which the rule fixes; only how the roof reads changes.
+      const pos = g.getAttribute("position");
+      const nrm = g.getAttribute("normal");
+      const count = pos.count;
+      const rough = new Float32Array(count);
+      const metal = new Float32Array(count);
+      for (let v = 0; v < count; v++) {
+        const isRoof = nrm ? nrm.getY(v) > 0.5 : false;
+        rough[v] = isRoof ? 0.92 : app.roughness;
+        metal[v] = isRoof ? 0.0 : app.metalness;
+      }
+      g.setAttribute("aRoughness", new THREE.BufferAttribute(rough, 1));
+      g.setAttribute("aMetalness", new THREE.BufferAttribute(metal, 1));
 
       const geoId = batched.addGeometry(g);
       const instId = batched.addInstance(geoId);
