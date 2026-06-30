@@ -12,6 +12,8 @@ import {
 import { selection } from "./selectionStore";
 import { editRatios } from "./editRatios";
 import { buildWindowEmissiveNode } from "./windowLights";
+import { classifyArchetype, archetypeAppearance, footprintArea } from "./materialArchetype";
+import { attribute } from "three/tsl";
 import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
 
@@ -40,6 +42,11 @@ export function City({
       roughness: 0.82,
       metalness: 0.0,
     });
+    // Per-building PBR from the real-attribute archetype (V2): glass, masonry, concrete, metal, baked as
+    // vertex attributes so the box positions never change (ADR-R29). Roughness and metalness drive the IBL
+    // reflection, so glass reflects the sky and the golden-hour sun while masonry and concrete read matte.
+    material.roughnessNode = attribute("aRoughness");
+    material.metalnessNode = attribute("aMetalness");
     // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
     // dusk via the shared daylight factor and bloom in the existing post stack. Floor
     // pitch is the model's real storey height, so window rows align to storeys.
@@ -57,13 +64,26 @@ export function City({
 
     const color = new THREE.Color();
     const identity = new THREE.Matrix4();
+    const byId = new Map(buildings.map((b) => [b.id, b]));
     geometries.forEach((g, i) => {
+      const b = byId.get(ids[i]);
+      const arch = b
+        ? classifyArchetype(b.heightValue, footprintArea(b.footprint[0] ?? []))
+        : "concrete";
+      const app = archetypeAppearance(arch);
+      // Bake per-archetype roughness and metalness as vertex attributes (one value per vertex; box
+      // positions untouched). The material reads them; the scorers never see them (ADR-R29).
+      const n = g.getAttribute("position").count;
+      g.setAttribute("aRoughness", new THREE.BufferAttribute(new Float32Array(n).fill(app.roughness), 1));
+      g.setAttribute("aMetalness", new THREE.BufferAttribute(new Float32Array(n).fill(app.metalness), 1));
+
       const geoId = batched.addGeometry(g);
       const instId = batched.addInstance(geoId);
       batched.setMatrixAt(instId, identity); // geometry is already world-placed
-      // Subtle warm-grey jitter so a field of prisms does not read as flat grey.
-      const r = hash01(i);
-      color.setHSL(0.08, 0.05 + r * 0.03, 0.4 + r * 0.16);
+      // The archetype base albedo with a subtle within-archetype jitter, so a field of one material is
+      // not flat.
+      const j = 0.9 + hash01(i) * 0.16;
+      color.setRGB(app.color[0] * j, app.color[1] * j, app.color[2] * j);
       batched.setColorAt(instId, color);
     });
 
