@@ -5,6 +5,7 @@ import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { City } from "./City";
 import { Landmarks } from "./LandmarkLayer";
+import { RoofClutter } from "./RoofClutter";
 import { Context } from "./Context";
 import { Ground } from "./Ground";
 import { Streets } from "./Streets";
@@ -292,6 +293,7 @@ export function Scene({ payload }: { payload: CityPayload }) {
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
       <City buildings={regularBuildings} metresPerStorey={payload.metresPerStorey} />
+      <RoofClutter buildings={regularBuildings} />
       <Landmarks
         buildings={landmarkBuildings}
         placements={payload.landmarks}
