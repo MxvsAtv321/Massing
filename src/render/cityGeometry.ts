@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { BuildingForScene } from "../mutation/building";
+import type { Footprint } from "../model/types";
 import type { ModelBounds } from "./types";
 
 // Build one extruded BufferGeometry per building, world-placed in Three space.
@@ -38,7 +39,7 @@ export function buildBuildingGeometries(buildings: BuildingForScene[]): {
   return { geometries, ids };
 }
 
-function buildShape(footprint: number[][][]): THREE.Shape | null {
+function buildShape(footprint: Footprint): THREE.Shape | null {
   const outer = footprint[0];
   if (!outer || outer.length < 4) return null; // need 3 distinct points plus the close
 
