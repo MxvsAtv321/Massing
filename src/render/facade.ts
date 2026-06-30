@@ -1,4 +1,6 @@
 import {
+  Fn,
+  If,
   positionWorld,
   positionView,
   normalLocal,
@@ -61,21 +63,30 @@ export function buildFacadeNodes(metresPerStorey: number) {
 
   // Relief: the grid as a height field (mullions proud at 1, panes recessed at 0), perturbing the normal by
   // the Mikkelsen surface-gradient method using the screen-space derivative of the height directly (the
-  // height is procedural, not a sampled texture). Faded by view distance so far buildings read flat.
+  // height is procedural, not a sampled texture). The derivatives must sit in uniform control flow, so they
+  // are taken and stored first; the expensive surface-gradient assembly is then gated behind the near
+  // distance, so the far carpet of background buildings pays nothing. The strength has already faded to zero
+  // by RELIEF_FAR, so the cutoff is seamless. This is the VD2 relief plus its perf gate.
   const dist = positionView.length();
   const reliefStrength = smoothstep(RELIEF_FAR, RELIEF_NEAR, dist).mul(RELIEF_SCALE);
-  // Height field broadcast to a vec3 so the screen-space derivative (typed for vectors only) applies.
-  const height = vec3(paneness.oneMinus()); // mullions proud at 1, panes recessed at 0
-  const dHdxy = vec2(height.dFdx().x, height.dFdy().x).mul(reliefStrength);
-  const surfPos = positionView;
   const surfNorm = normalView;
-  const vSigmaX = surfPos.dFdx().normalize();
-  const vSigmaY = surfPos.dFdy().normalize();
-  const R1 = vSigmaY.cross(surfNorm);
-  const R2 = surfNorm.cross(vSigmaX);
-  const fDet = vSigmaX.dot(R1).mul(faceDirection as unknown as typeof dist);
-  const vGrad = fDet.sign().mul(dHdxy.x.mul(R1).add(dHdxy.y.mul(R2)));
-  const normalNode = fDet.abs().mul(surfNorm).sub(vGrad).normalize();
+
+  const normalNode = Fn(() => {
+    // Height field broadcast to a vec3 so the screen-space derivative (typed for vectors only) applies.
+    const height = vec3(paneness.oneMinus());
+    const dHdxy = vec2(height.dFdx().x, height.dFdy().x).mul(reliefStrength).toVar();
+    const vSigmaX = positionView.dFdx().normalize().toVar();
+    const vSigmaY = positionView.dFdy().normalize().toVar();
+    const n = vec3(surfNorm).toVar();
+    If(dist.lessThan(RELIEF_FAR), () => {
+      const R1 = vSigmaY.cross(surfNorm);
+      const R2 = surfNorm.cross(vSigmaX);
+      const fDet = vSigmaX.dot(R1).mul(faceDirection as unknown as typeof dist);
+      const vGrad = fDet.sign().mul(dHdxy.x.mul(R1).add(dHdxy.y.mul(R2)));
+      n.assign(fDet.abs().mul(surfNorm).sub(vGrad).normalize());
+    });
+    return n;
+  })();
 
   return { colorNode, roughnessNode, normalNode };
 }
