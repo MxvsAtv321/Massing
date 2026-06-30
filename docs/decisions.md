@@ -1103,6 +1103,65 @@ refuses).
 
 ---
 
+## ADR-R29: Appearance and identity are separated; the visual layer can only write pixels
+
+Status: Accepted
+Date: 2026-06-29
+
+Context: the visual-credibility unit makes the real structured city beautiful (materials, rooflines,
+landmarks) without changing what the city is. This is the one unit where the usual gates are blind: a
+prettier render that quietly shifted a footprint, a height, or a shadow would corrupt the instrument
+underneath while every existing test stayed green. So the separation of appearance from identity is the
+load-bearing contract of the unit and is pinned here as one.
+
+Decision: there is one canonical geometry, the loaded BuildingForScene (footprint rings and heightValue),
+and everything derives from it: the shadow raymarch's occluders, the cluster centroids, the road-stitch
+context and the generated-district signature, and the visual BatchedMesh boxes. The visual layer reads
+that geometry and produces only pixels (TSL materials, additive decorative meshes, landmark meshes). It
+never writes back. Three guarantees enforce this, in increasing strength:
+
+1. Structural: the material, silhouette, and landmark systems live in src/render and are never imported
+   by a scorer, so there is no code path from appearance to a number.
+2. Type-level: the scorer-facing geometry (BuildingForScene and HeightfieldBuilding footprints and
+   heights) is deeply readonly, so an in-place mutation from a visual system is a compile error, not a
+   runtime bug that might go unnoticed.
+3. The invariance test, the gate: tests/visual-invariance.test.ts freezes, for all three cities, the
+   geometry identity signature and all four consequence outputs, and fails if any visual commit moves
+   one of them. This is to this unit what the determinism signature was to the generative arc.
+
+Three rules follow and are absolute:
+
+- Shadows come from the boxes, never from decoration. Both the cascaded lighting shadow map and the
+  scored sun ledger read the canonical boxes. Crowns, parapets, and roof detail are never shadow casters,
+  on screen or in the ledger, so the on-screen shadow and the heatmap always describe the same massing.
+  Visual treatment stays at or within the canonical box envelope; anything that would raise the height or
+  shrink the footprint the raymarch reads is identity, and forbidden (setbacks that taper a tower are
+  deferred for this reason).
+- A landmark is appearance over the real massing. The landmark's canonical box stays in the heightfield
+  and casts the shadow exactly as today; the detailed mesh suppresses the box's own render and stands in
+  for it visually, authored to the real footprint and height. The rendered landmark and its shadow are
+  always the same building.
+- Material is inferred, geometry is measured. Footprints and heights are real and feed consequences. The
+  material archetype (tall reads as glass, mid-rise as masonry) is a visual heuristic inferred from real
+  attributes, not a measurement, and it is allowed only because appearance never feeds a consequence and
+  the wall guarantees it cannot. The classifier is marked visual-only inference so a later unit never
+  mistakes it for ground truth, and it must never grow to assert building use or age as if known.
+
+Consequences: the visual leap is built on the structured city with beauty and identity coupled, and the
+generated proposals keep a distinct, cooler, more diagrammatic material on purpose. Once the real city
+looks photoreal, a proposal that also looked real would read as a claim that it exists, the line the
+project has refused the whole way, so the proposal looking designed rather than real is a deliberate
+honesty signal (the register line, ADR-R07, made visual), not a placeholder to be removed when someone
+asks to make proposals prettier.
+
+Alternatives rejected: relying on the invariance test alone without the readonly wall (catches a drift
+after the fact rather than forbidding it at compile time, for the one unit where that matters most).
+Letting decoration cast shadows (the rendered shadow and the scored sun would diverge). Replacing a
+landmark's massing with its detailed mesh (the rendered building and its shadow would be two different
+buildings).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
