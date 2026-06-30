@@ -31,6 +31,11 @@ export function RenderPipeline() {
       const depth = scenePass.getTextureNode("depth");
 
       const aoPass = ao(depth, normal, camera);
+      // GTAO at half resolution (ADR-R08). Ambient occlusion is low-frequency, so a
+      // half-res pass is near-invisible while cutting this pass, one of the heaviest
+      // (many depth taps per pixel), to about a quarter of its full-res cost. It is
+      // upsampled when sampled into the beauty below.
+      aoPass.resolutionScale = 0.5;
       // GTAO stores occlusion in the red channel only (RedFormat). Broadcast it
       // to rgb so it darkens the beauty, rather than multiplying the raw texture
       // in and zeroing green and blue (which floods the scene red).
