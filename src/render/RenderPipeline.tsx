@@ -44,12 +44,12 @@ export function RenderPipeline() {
       // the scene colour straight through.
       let lit = color.mul(vec4(1, 1, 1, 1));
       if (postMode !== "noao") {
+        // GTAO runs at full resolution. Half-res was tried for the fill budget (ADR-R08)
+        // but its plain bilinear upsample bleeds occlusion across the building-vs-sky
+        // depth edges, ghosting the silhouettes into a translucent duplicate. The DPR cap
+        // already holds the budget (the frame is vsync-bound at 60), so the AO stays full
+        // resolution. Do not reintroduce resolutionScale here without a depth-aware upsample.
         const aoPass = ao(depth, normal, camera);
-        // GTAO at half resolution (ADR-R08). Ambient occlusion is low-frequency, so a
-        // half-res pass is near-invisible while cutting this pass, one of the heaviest
-        // (many depth taps per pixel), to about a quarter of its full-res cost. It is
-        // upsampled when sampled into the beauty below.
-        aoPass.resolutionScale = 0.5;
         // GTAO stores occlusion in the red channel only (RedFormat). Broadcast it
         // to rgb so it darkens the beauty, rather than multiplying the raw texture
         // in and zeroing green and blue (which floods the scene red).
