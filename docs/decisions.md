@@ -1066,6 +1066,43 @@ now (premature; the safety layer must prove itself on curated and thin-data citi
 
 ---
 
+## ADR-R28: The real structured city, not a Google photorealistic mesh, is the visual substrate
+
+Status: Accepted
+Date: 2026-06-29
+
+Context: making the real city beautiful (the visual-credibility unit) raises the option of using Google's
+photorealistic 3D tiles, or a similar captured mesh, as the visual substrate instead of shading the
+structured geometry we already carry.
+
+Decision: do not. Google's photorealistic 3D tiles are an unstructured triangle mesh with no per-building
+identity: no footprint-to-building mapping, no measured height per structure, no attributes. That makes
+it incompatible with everything the engine is. It cannot carry per-building confidence (ADR-R26), cannot
+be edited (the gizmo and EditOp path need per-building identity), and cannot feed the shadow ledger or any
+consequence (the raymarch reads per-building footprints and heights, the signature hashes structured
+geometry). It is also license-restricted for a civic planning tool. So the real structured city, the
+footprints and measured heights we already hold, is the only thing we make beautiful; appearance is
+layered on the structured geometry, never replacing it with a mesh.
+
+A distant, non-interactive skyline backdrop (a far mesh as pure scenery, beyond the planning catchment,
+never the substrate, never feeding a consequence) is a possible later scenery item, out of scope for this
+unit. If pursued it is decoration at the horizon, clearly separated from the structured city, and it never
+touches identity.
+
+Consequences: beauty and identity stay coupled. A beautiful building is still a real building with a real
+footprint, height, confidence, and shadow, because the look is shaded onto the structured geometry rather
+than swapped for a captured mesh. We do not inherit a prettier-but-dumber substrate. The cost is that we
+author materials and a small set of landmark meshes ourselves instead of getting a free photoreal mesh,
+which is the correct trade for an instrument.
+
+Alternatives rejected: Google 3D tiles as the substrate (unstructured, no identity, cannot carry
+confidence or feed consequences, license-restricted). A hybrid where the mesh is the visual and the
+structured city is the hidden scorer (two geometries that drift; the rendered building and the scored
+building would no longer be the same thing, the exact moat-breaking divergence the determinism gate
+refuses).
+
+---
+
 # Original decisions (001 to 010) and their disposition under the rebuild
 
 ## ADR-001: One neighborhood, St. Lawrence / St. James Park
