@@ -1,9 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three/webgpu";
 import { buildBuildingGeometries } from "./cityGeometry";
 import { archetypeAppearance } from "./materialArchetype";
+import { buildWindowEmissiveNode } from "./windowLights";
+import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
 import type { LandmarkPlacement } from "./landmarks";
 
@@ -14,13 +17,16 @@ import type { LandmarkPlacement } from "./landmarks";
 export function Landmarks({
   buildings,
   placements,
+  metresPerStorey,
 }: {
   buildings: BuildingForScene[];
   placements: LandmarkPlacement[];
+  metresPerStorey: number;
 }) {
-  const group = useMemo(() => {
+  const { group, updateWindows } = useMemo(() => {
     const root = new THREE.Group();
-    if (buildings.length === 0) return root;
+    const noop = (_d: number, _t: number) => {};
+    if (buildings.length === 0) return { group: root, updateWindows: noop };
 
     // Shadow-only canonical boxes: cast the real massing's shadow, render no color and no depth occlusion
     // so the detailed model behind them shows through.
@@ -35,7 +41,8 @@ export function Landmarks({
       root.add(m);
     }
 
-    // The detailed appearance models, never shadow casters.
+    // The detailed appearance models, never shadow casters, lit at night by the same window node the city
+    // uses so the landmark glows with the skyline instead of going dark.
     const glass = archetypeAppearance("glass");
     const modelMat = new THREE.MeshStandardNodeMaterial({
       roughness: glass.roughness,
@@ -43,10 +50,14 @@ export function Landmarks({
       side: THREE.DoubleSide,
     });
     modelMat.color = new THREE.Color(glass.color[0], glass.color[1], glass.color[2]);
+    const windows = buildWindowEmissiveNode({ metresPerStorey });
+    modelMat.emissiveNode = windows.emissiveNode;
     for (const p of placements) root.add(buildLandmarkModel(p, modelMat));
 
-    return root;
-  }, [buildings, placements]);
+    return { group: root, updateWindows: windows.update };
+  }, [buildings, placements, metresPerStorey]);
+
+  useFrame((state) => updateWindows(daylightLive.dayFactor, state.clock.elapsedTime));
 
   return <primitive object={group} />;
 }

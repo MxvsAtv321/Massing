@@ -292,7 +292,11 @@ export function Scene({ payload }: { payload: CityPayload }) {
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
       <City buildings={regularBuildings} metresPerStorey={payload.metresPerStorey} />
-      <Landmarks buildings={landmarkBuildings} placements={payload.landmarks} />
+      <Landmarks
+        buildings={landmarkBuildings}
+        placements={payload.landmarks}
+        metresPerStorey={payload.metresPerStorey}
+      />
       {/* The agent-authored proposal: cool-tinted generated streets and instanced massing that rises
           on a directive ("g" one block, "d" a district), the line held by register and the measured
           sun study, not by looking fake (G2/G3, ADR-R18/R19). */}
