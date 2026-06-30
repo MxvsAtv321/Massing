@@ -13,6 +13,7 @@ import { selection } from "./selectionStore";
 import { editRatios } from "./editRatios";
 import { buildWindowEmissiveNode } from "./windowLights";
 import { classifyArchetype, archetypeAppearance, footprintArea } from "./materialArchetype";
+import { buildFacadeColorRoughness } from "./facade";
 import { attribute } from "three/tsl";
 import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
@@ -43,10 +44,15 @@ export function City({
       metalness: 0.0,
     });
     // Per-building PBR from the real-attribute archetype (V2): glass, masonry, concrete, metal, baked as
-    // vertex attributes so the box positions never change (ADR-R29). Roughness and metalness drive the IBL
-    // reflection, so glass reflects the sky and the golden-hour sun while masonry and concrete read matte.
-    material.roughnessNode = attribute("aRoughness");
+    // vertex attributes so the box positions never change (ADR-R29). Metalness drives the IBL reflection so
+    // glass reflects the sky and the golden-hour sun while masonry and concrete read matte.
     material.metalnessNode = attribute("aMetalness");
+    // Daytime facade (VD1): the window grid in albedo and roughness, so every building reads as a glazed or
+    // masonry facade in daylight rather than a flat box. Material only, all buildings, within the rule; it
+    // reads the per-vertex aColor/aRoughness below and modulates them (roofs keep their matte V3 material).
+    const facade = buildFacadeColorRoughness(metresPerStorey);
+    material.colorNode = facade.colorNode;
+    material.roughnessNode = facade.roughnessNode;
     // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
     // dusk via the shared daylight factor and bloom in the existing post stack. Floor
     // pitch is the model's real storey height, so window rows align to storeys.
@@ -62,7 +68,6 @@ export function City({
     batched.castShadow = true;
     batched.receiveShadow = true;
 
-    const color = new THREE.Color();
     const identity = new THREE.Matrix4();
     const byId = new Map(buildings.map((b) => [b.id, b]));
     geometries.forEach((g, i) => {
@@ -85,17 +90,22 @@ export function City({
         rough[v] = isRoof ? 0.92 : app.roughness;
         metal[v] = isRoof ? 0.0 : app.metalness;
       }
+      // The archetype base albedo with a subtle within-archetype jitter, baked per vertex as aColor so the
+      // facade colorNode can read and modulate it (a BatchedMesh instance colour cannot reach a node).
+      const j = 0.9 + hash01(i) * 0.16;
+      const col = new Float32Array(count * 3);
+      for (let v = 0; v < count; v++) {
+        col[v * 3] = app.color[0] * j;
+        col[v * 3 + 1] = app.color[1] * j;
+        col[v * 3 + 2] = app.color[2] * j;
+      }
+      g.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
       g.setAttribute("aRoughness", new THREE.BufferAttribute(rough, 1));
       g.setAttribute("aMetalness", new THREE.BufferAttribute(metal, 1));
 
       const geoId = batched.addGeometry(g);
       const instId = batched.addInstance(geoId);
       batched.setMatrixAt(instId, identity); // geometry is already world-placed
-      // The archetype base albedo with a subtle within-archetype jitter, so a field of one material is
-      // not flat.
-      const j = 0.9 + hash01(i) * 0.16;
-      color.setRGB(app.color[0] * j, app.color[1] * j, app.color[2] * j);
-      batched.setColorAt(instId, color);
     });
 
     // instanceId -> clusterId, aligned with the addInstance order above so a
