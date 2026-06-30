@@ -13,7 +13,7 @@ import { selection } from "./selectionStore";
 import { editRatios } from "./editRatios";
 import { buildWindowEmissiveNode } from "./windowLights";
 import { classifyArchetype, archetypeAppearance, footprintArea } from "./materialArchetype";
-import { buildFacadeColorRoughness } from "./facade";
+import { buildFacadeNodes } from "./facade";
 import { attribute } from "three/tsl";
 import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
@@ -50,9 +50,13 @@ export function City({
     // Daytime facade (VD1): the window grid in albedo and roughness, so every building reads as a glazed or
     // masonry facade in daylight rather than a flat box. Material only, all buildings, within the rule; it
     // reads the per-vertex aColor/aRoughness below and modulates them (roofs keep their matte V3 material).
-    const facade = buildFacadeColorRoughness(metresPerStorey);
+    const facade = buildFacadeNodes(metresPerStorey);
     material.colorNode = facade.colorNode;
     material.roughnessNode = facade.roughnessNode;
+    // Relief depth on the window grid (VD2): mullions catch light, panes recess. Material only, faded with
+    // distance so far buildings stay flat. Box positions untouched, so the shadow and the scorers are blind
+    // to it (ADR-R29).
+    material.normalNode = facade.normalNode;
     // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
     // dusk via the shared daylight factor and bloom in the existing post stack. Floor
     // pitch is the model's real storey height, so window rows align to storeys.
