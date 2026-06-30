@@ -10,10 +10,18 @@ export type RendererHandle = {
 // and forces the WebGL2 backend when WebGPU is unavailable (ADR-R01: one
 // renderer, two backends; the fallback is visibly lesser by decision, never a
 // second post stack). R3F passes its canvas in `props`; we spread it through.
+// ?backend=webgl2 (or webgpu) forces the path, so the fallback frame is reachable for the V2 visual gate
+// on a WebGPU machine. No param keeps the automatic choice.
+function backendOverride(): Backend | null {
+  if (typeof window === "undefined") return null;
+  const v = new URLSearchParams(window.location.search).get("backend");
+  return v === "webgl2" ? "webgl2" : v === "webgpu" ? "webgpu" : null;
+}
+
 export async function createRenderer(
   props: Record<string, unknown>
 ): Promise<THREE.WebGPURenderer> {
-  const backend: Backend = pickBackend(detectWebGPU());
+  const backend: Backend = backendOverride() ?? pickBackend(detectWebGPU());
   const renderer = new THREE.WebGPURenderer({
     ...props,
     antialias: true,
