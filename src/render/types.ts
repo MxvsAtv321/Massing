@@ -5,6 +5,7 @@ import type { RoutableEdge } from "../traffic/routableGraph";
 import type { ODNodeFlow } from "../traffic/assignment";
 import type { RealGraph } from "../generate/stitch";
 import type { AnalysisRegion } from "../study/studyTypes";
+import type { LandmarkPlacement } from "./landmarks";
 
 // One drivable street centerline, deduped from the directed road graph.
 export type StreetSegment = {
@@ -44,6 +45,7 @@ export type CityPayload = {
   cityId: string; // the active city id (I6)
   displayName: string; // human-readable place name for the UI
   defaultStudyRegion: AnalysisRegion; // the city's analysis anchor (authored or origin-centered)
+  landmarks: LandmarkPlacement[]; // iconic buildings rendered as detailed models over their real massing (V4)
 };
 
 export type ModelBounds = {

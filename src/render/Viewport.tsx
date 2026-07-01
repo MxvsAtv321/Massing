@@ -22,6 +22,14 @@ export default function Viewport({ payload }: { payload: CityPayload }) {
     <div style={{ position: "fixed", inset: 0 }}>
       <Canvas
         shadows
+        // Cap the pixel ratio (ADR-R08). A low wide golden-hour view is fill-bound:
+        // every pass (scene, the three shadow cascades, GTAO, bloom) scales with the
+        // pixel count, and a retina laptop at devicePixelRatio 2 pays 4x the fragments
+        // of DPR 1. Clamping to 1.5 cuts fragment work ~44% versus 2.0 and compounds
+        // across the whole stack, the single biggest frame-budget lever, with only a
+        // slight edge softening that AgX and bloom largely absorb. Tuning knob: 1.25
+        // is faster, 1.75 is crisper.
+        dpr={[1, 1.5]}
         camera={{ position: [600, 450, 600], fov: 45, near: 1, far: 20000 }}
         gl={(props) => createRenderer(props as Record<string, unknown>)}
       >

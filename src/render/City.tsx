@@ -12,6 +12,9 @@ import {
 import { selection } from "./selectionStore";
 import { editRatios } from "./editRatios";
 import { buildWindowEmissiveNode } from "./windowLights";
+import { classifyArchetype, archetypeAppearance, footprintArea } from "./materialArchetype";
+import { buildFacadeNodes } from "./facade";
+import { attribute } from "three/tsl";
 import { daylightLive } from "./daylightStore";
 import type { BuildingForScene } from "../mutation/building";
 
@@ -40,6 +43,20 @@ export function City({
       roughness: 0.82,
       metalness: 0.0,
     });
+    // Per-building PBR from the real-attribute archetype (V2): glass, masonry, concrete, metal, baked as
+    // vertex attributes so the box positions never change (ADR-R29). Metalness drives the IBL reflection so
+    // glass reflects the sky and the golden-hour sun while masonry and concrete read matte.
+    material.metalnessNode = attribute("aMetalness");
+    // Daytime facade (VD1): the window grid in albedo and roughness, so every building reads as a glazed or
+    // masonry facade in daylight rather than a flat box. Material only, all buildings, within the rule; it
+    // reads the per-vertex aColor/aRoughness below and modulates them (roofs keep their matte V3 material).
+    const facade = buildFacadeNodes(metresPerStorey);
+    material.colorNode = facade.colorNode;
+    material.roughnessNode = facade.roughnessNode;
+    // Relief depth on the window grid (VD2): mullions catch light, panes recess. Material only, faded with
+    // distance so far buildings stay flat. Box positions untouched, so the shadow and the scorers are blind
+    // to it (ADR-R29).
+    material.normalNode = facade.normalNode;
     // Nightfall window lights (Unit 6): emissive procedural windows that ramp on at
     // dusk via the shared daylight factor and bloom in the existing post stack. Floor
     // pitch is the model's real storey height, so window rows align to storeys.
@@ -55,16 +72,44 @@ export function City({
     batched.castShadow = true;
     batched.receiveShadow = true;
 
-    const color = new THREE.Color();
     const identity = new THREE.Matrix4();
+    const byId = new Map(buildings.map((b) => [b.id, b]));
     geometries.forEach((g, i) => {
+      const b = byId.get(ids[i]);
+      const arch = b
+        ? classifyArchetype(b.heightValue, footprintArea(b.footprint[0] ?? []))
+        : "concrete";
+      const app = archetypeAppearance(arch);
+      // Bake roughness and metalness as per-vertex attributes (box positions untouched, ADR-R29). Walls
+      // take the archetype; up-facing roof faces are forced matte and non-metal, so a glass tower does not
+      // mirror the sky off its flat top (V3, the within-envelope roof treatment). The silhouette outline
+      // stays the canonical box, which the rule fixes; only how the roof reads changes.
+      const pos = g.getAttribute("position");
+      const nrm = g.getAttribute("normal");
+      const count = pos.count;
+      const rough = new Float32Array(count);
+      const metal = new Float32Array(count);
+      for (let v = 0; v < count; v++) {
+        const isRoof = nrm ? nrm.getY(v) > 0.5 : false;
+        rough[v] = isRoof ? 0.92 : app.roughness;
+        metal[v] = isRoof ? 0.0 : app.metalness;
+      }
+      // The archetype base albedo with a subtle within-archetype jitter, baked per vertex as aColor so the
+      // facade colorNode can read and modulate it (a BatchedMesh instance colour cannot reach a node).
+      const j = 0.9 + hash01(i) * 0.16;
+      const col = new Float32Array(count * 3);
+      for (let v = 0; v < count; v++) {
+        col[v * 3] = app.color[0] * j;
+        col[v * 3 + 1] = app.color[1] * j;
+        col[v * 3 + 2] = app.color[2] * j;
+      }
+      g.setAttribute("aColor", new THREE.BufferAttribute(col, 3));
+      g.setAttribute("aRoughness", new THREE.BufferAttribute(rough, 1));
+      g.setAttribute("aMetalness", new THREE.BufferAttribute(metal, 1));
+
       const geoId = batched.addGeometry(g);
       const instId = batched.addInstance(geoId);
       batched.setMatrixAt(instId, identity); // geometry is already world-placed
-      // Subtle warm-grey jitter so a field of prisms does not read as flat grey.
-      const r = hash01(i);
-      color.setHSL(0.08, 0.05 + r * 0.03, 0.4 + r * 0.16);
-      batched.setColorAt(instId, color);
     });
 
     // instanceId -> clusterId, aligned with the addInstance order above so a

@@ -22,6 +22,15 @@ export function RenderPipeline() {
   const [stats] = useState(() => new Stats({ trackGPU: true }));
 
   const post = useMemo(() => {
+    // Diagnostic isolation of the post stack (ADR-R08 debugging). ?post=off does a
+    // direct render with no node post; ?post=noao drops GTAO; ?post=nobloom drops
+    // bloom. So a screen-space artifact can be pinned to a single pass by elimination
+    // instead of guessing. No param keeps the full stack.
+    const postMode =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("post")
+        : null;
+    if (postMode === "off") return null;
     try {
       const scenePass = pass(scene, camera);
       scenePass.setMRT(mrt({ output, normal: transformedNormalView }));
@@ -30,16 +39,27 @@ export function RenderPipeline() {
       const normal = scenePass.getTextureNode("normal");
       const depth = scenePass.getTextureNode("depth");
 
-      const aoPass = ao(depth, normal, camera);
-      // GTAO stores occlusion in the red channel only (RedFormat). Broadcast it
-      // to rgb so it darkens the beauty, rather than multiplying the raw texture
-      // in and zeroing green and blue (which floods the scene red).
-      const occlusion = aoPass.getTextureNode().r;
-      const lit = color.mul(vec4(vec3(occlusion), 1));
-      const bloomPass = bloom(lit, 0.6, 0.5, 0.85);
+      // Seed as an identity-multiplied vec4 node so both branches share one node type
+      // (a bare texture node and color.mul(...) do not unify); in noao mode this passes
+      // the scene colour straight through.
+      let lit = color.mul(vec4(1, 1, 1, 1));
+      if (postMode !== "noao") {
+        // GTAO runs at full resolution. Half-res was tried for the fill budget (ADR-R08)
+        // but its plain bilinear upsample bleeds occlusion across the building-vs-sky
+        // depth edges, ghosting the silhouettes into a translucent duplicate. The DPR cap
+        // already holds the budget (the frame is vsync-bound at 60), so the AO stays full
+        // resolution. Do not reintroduce resolutionScale here without a depth-aware upsample.
+        const aoPass = ao(depth, normal, camera);
+        // GTAO stores occlusion in the red channel only (RedFormat). Broadcast it
+        // to rgb so it darkens the beauty, rather than multiplying the raw texture
+        // in and zeroing green and blue (which floods the scene red).
+        const occlusion = aoPass.getTextureNode().r;
+        lit = color.mul(vec4(vec3(occlusion), 1));
+      }
 
       const pp = new THREE.PostProcessing(gl);
-      pp.outputNode = lit.add(bloomPass);
+      pp.outputNode =
+        postMode === "nobloom" ? lit : lit.add(bloom(lit, 0.6, 0.5, 0.85));
       return pp;
     } catch (e) {
       console.warn("[massing] node post unavailable; rendering without post", e);

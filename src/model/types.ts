@@ -1,3 +1,8 @@
+// The canonical footprint geometry, deeply readonly so a visual change cannot mutate the geometry the
+// scorers and the signature read (ADR-R29). Rings of [east, north] ENU points.
+export type FootprintRing = readonly (readonly number[])[];
+export type Footprint = readonly FootprintRing[];
+
 export type Confidence =
   | { kind: "measured"; sigma_m: number }
   | { kind: "estimated"; sigma_m: number }

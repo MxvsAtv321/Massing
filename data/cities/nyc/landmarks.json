@@ -1,0 +1,10 @@
+{
+  "landmarks": [
+    {
+      "id": "one-wtc",
+      "name": "One World Trade Center",
+      "lonlat": [-74.01321, 40.71304],
+      "kind": "tapered-spire"
+    }
+  ]
+}

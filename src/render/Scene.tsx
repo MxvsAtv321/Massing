@@ -4,6 +4,8 @@ import { useEffect, useMemo } from "react";
 import { useThree } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei";
 import { City } from "./City";
+import { Landmarks } from "./LandmarkLayer";
+import { RoofClutter } from "./RoofClutter";
 import { Context } from "./Context";
 import { Ground } from "./Ground";
 import { Streets } from "./Streets";
@@ -132,6 +134,21 @@ export function Scene({ payload }: { payload: CityPayload }) {
         ? payload.buildings.filter((b) => !gen.clearedClusterIds.has(b.clusterId))
         : payload.buildings,
     [payload.buildings, gen.clearedClusterIds]
+  );
+
+  // Split out the landmark clusters: they render as detailed models (Landmarks), so the structured City
+  // mesh skips them while their shadow-casting boxes move into the Landmarks layer (V4).
+  const landmarkClusterIds = useMemo(
+    () => new Set(payload.landmarks.map((l) => l.clusterId)),
+    [payload.landmarks]
+  );
+  const regularBuildings = useMemo(
+    () => cityBuildings.filter((b) => !landmarkClusterIds.has(b.clusterId)),
+    [cityBuildings, landmarkClusterIds]
+  );
+  const landmarkBuildings = useMemo(
+    () => cityBuildings.filter((b) => landmarkClusterIds.has(b.clusterId)),
+    [cityBuildings, landmarkClusterIds]
   );
 
   useEffect(() => {
@@ -275,7 +292,13 @@ export function Scene({ payload }: { payload: CityPayload }) {
       {/* Living traffic: glowing capsules advected on the directed graph at the
           flow speed (CPU reference, 5b; GPU compute scales it in 5c). */}
       <Traffic network={payload.network} flow={flowEngine} />
-      <City buildings={cityBuildings} metresPerStorey={payload.metresPerStorey} />
+      <City buildings={regularBuildings} metresPerStorey={payload.metresPerStorey} />
+      <RoofClutter buildings={regularBuildings} />
+      <Landmarks
+        buildings={landmarkBuildings}
+        placements={payload.landmarks}
+        metresPerStorey={payload.metresPerStorey}
+      />
       {/* The agent-authored proposal: cool-tinted generated streets and instanced massing that rises
           on a directive ("g" one block, "d" a district), the line held by register and the measured
           sun study, not by looking fake (G2/G3, ADR-R18/R19). */}

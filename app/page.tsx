@@ -6,6 +6,7 @@ import { resolveCordon, type CordonFile } from "../src/traffic/cordon";
 import { deriveCordon } from "../src/traffic/deriveCordon";
 import { exampleScenario, type Place } from "../src/traffic/demand";
 import { parseRegions } from "../src/study/region";
+import { resolveLandmarks, type LandmarkFile } from "../src/render/landmarks";
 import type { AnalysisRegion } from "../src/study/studyTypes";
 import { toRoutableGraph } from "../src/traffic/routableGraph";
 import { assignWithBand, type ODNodeFlow } from "../src/traffic/assignment";
@@ -182,6 +183,12 @@ export default async function Page({
         source: "placed",
       };
 
+  // Iconic buildings rendered as detailed models over their real massing (V4). The registry is optional;
+  // a city with no landmarks.json simply renders all buildings as the structured city.
+  const landmarks = fs.existsSync(files.landmarks)
+    ? resolveLandmarks((JSON.parse(fs.readFileSync(files.landmarks, "utf8")) as LandmarkFile).landmarks, model)
+    : [];
+
   return (
     <CanvasClient
       payload={{
@@ -197,6 +204,7 @@ export default async function Page({
         cityId: model.sources.cityId,
         displayName: model.sources.displayName,
         defaultStudyRegion,
+        landmarks,
       }}
     />
   );

@@ -32,8 +32,15 @@ export function StudyRegion() {
   const dragging = useRef(false);
   const [mode, setMode] = useState<Mode>("translate");
   // The manipulation gizmo is opt-in (key "r"): hidden by default so it stays out of the cinematic
-  // shot, the heatmap and the cyan border always show, only the transform handle is gated.
+  // shot, only the transform handle is gated.
   const [showGizmo, setShowGizmo] = useState(false);
+  // The sun-hours heatmap is opt-in (key "h"), default off. It is a faint translucent sheet over the
+  // whole study region, and in a wide or overhead shot the shadowed (low-alpha cool-blue) cells read as
+  // a veil over the low-rise blocks while the tall towers occlude it, which overpowers the buildings. So
+  // the cinematic default is clean: the always-on cyan border marks the region, the panel carries the
+  // numbers, and the heatmap is summoned only when reading sun access on the ground (spectacle serves
+  // the massing).
+  const [showHeat, setShowHeat] = useState(false);
 
   // The sun-hours heatmap: bake the field into a DataTexture and sample it on a plane
   // under the border. Rebuilt only when a study finishes (not per frame), so the
@@ -96,10 +103,12 @@ export function StudyRegion() {
   // 1 move, 2 resize, 3 rotate (when the gizmo is shown); r toggles the gizmo.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) return;
       if (e.key === "1") setMode("translate");
       else if (e.key === "2") setMode("scale");
       else if (e.key === "3") setMode("rotate");
-      else if (e.key.toLowerCase() === "r" && !e.metaKey && !e.ctrlKey) setShowGizmo((v) => !v);
+      else if (e.key.toLowerCase() === "r") setShowGizmo((v) => !v);
+      else if (e.key.toLowerCase() === "h") setShowHeat((v) => !v);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -146,7 +155,7 @@ export function StudyRegion() {
   return (
     <>
       <primitive object={proxy}>
-        {heat && (
+        {heat && showHeat && (
           <mesh
             rotation-x={-Math.PI / 2}
             position-y={-0.02}

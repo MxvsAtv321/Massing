@@ -1,3 +1,5 @@
+import type { Footprint, FootprintRing } from "../model/types";
+
 // A max-height grid of the city, the occluder for the sun-access raymarch (Unit 8,
 // increment 8.3). Each cell holds the tallest building height over it in metres,
 // 0 where there is open ground. Built once on the main thread from the real
@@ -43,7 +45,7 @@ export function confCode(c: OccluderConfidence): number {
 }
 
 export type HeightfieldBuilding = {
-  footprint: number[][][]; // ENU rings [east, north]; ring 0 is the outer
+  footprint: Footprint; // ENU rings [east, north]; ring 0 is the outer (readonly, ADR-R29)
   height: number; // metres above grade
   confidence?: OccluderConfidence; // height provenance; unknown defaults to estimated (conservative)
 };
@@ -138,7 +140,7 @@ export function sampleHeightAt(
   return field.maxH[cj * field.width + ci];
 }
 
-function pointInRing(ring: number[][], e: number, n: number): boolean {
+function pointInRing(ring: FootprintRing, e: number, n: number): boolean {
   let inside = false;
   for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
     const [xi, yi] = ring[i];

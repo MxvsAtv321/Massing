@@ -15,6 +15,7 @@ export type CityFiles = {
   cordon: string; // cordon gateways
   counts: string; // traffic counts
   studyRegions: string; // authored analysis anchors
+  landmarks: string; // iconic-building registry (V4), optional per city
 };
 
 export function cityDir(root: string, cityId: string = DEFAULT_CITY): string {
@@ -32,5 +33,6 @@ export function cityFiles(root: string, cityId: string = DEFAULT_CITY): CityFile
     cordon: path.join(dir, "cordon.json"),
     counts: path.join(dir, "traffic-counts.json"),
     studyRegions: path.join(dir, "study-regions.json"),
+    landmarks: path.join(dir, "landmarks.json"),
   };
 }
